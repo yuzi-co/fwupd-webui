@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="diagnostic">
+  <h2>No devices found</h2>
+  <p>
+    fwupd enumerated zero devices. On Unraid this is almost always a missing host
+    mount or insufficient privileges rather than a hardware problem.
+  </p>
+
+  <h3>Required host access</h3>
+  <table>
+    <thead><tr><th>Path</th><th>Visible</th><th>Why it is needed</th></tr></thead>
+    <tbody>
+      {% for check in mounts %}
+      <tr>
+        <td><code>{{ check.path }}</code></td>
+        <td>{% if check.present %}yes{% else %}<strong>no</strong>{% endif %}</td>
+        <td>{{ check.purpose }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3>Also check</h3>
+  <ul>
+    <li>The container is running with <code>--privileged</code>.</li>
+    <li>fwupd version in this image: <code>{{ inventory.fwupd_version }}</code></li>
+  </ul>
+
+  {% if inventory.metadata.error %}
+  <h3>Last error</h3>
+  <pre>{{ inventory.metadata.error }}</pre>
+  {% endif %}
+</div>
+{% endblock %}

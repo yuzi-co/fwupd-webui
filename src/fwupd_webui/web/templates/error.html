@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="diagnostic">
+  <h2>fwupd could not be queried</h2>
+  <pre>{{ message }}</pre>
+  <p>
+    This container talks to hardware through <code>fwupdtool</code>. If that command
+    is missing or failing, no inventory can be produced.
+  </p>
+</div>
+{% endblock %}
