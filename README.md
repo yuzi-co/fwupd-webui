@@ -25,7 +25,7 @@ docker run -d --name fwupd-webui \
   -v /dev:/dev \
   -v /run/udev:/run/udev:ro \
   -v /mnt/user/appdata/fwupd-webui:/var/lib/fwupd \
-  ghcr.io/YOURNAME/fwupd-webui:latest
+  ghcr.io/yuzi-co/fwupd-webui:latest
 ```
 
 On Unraid, install from Community Applications instead — the template sets all of

@@ -1,12 +1,12 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>fwupd-webui</Name>
-  <Repository>ghcr.io/YOURNAME/fwupd-webui:latest</Repository>
-  <Registry>https://ghcr.io/YOURNAME/fwupd-webui</Registry>
+  <Repository>ghcr.io/yuzi-co/fwupd-webui:latest</Repository>
+  <Registry>https://ghcr.io/yuzi-co/fwupd-webui</Registry>
   <Network>bridge</Network>
   <Privileged>true</Privileged>
-  <Support>https://github.com/YOURNAME/fwupd-webui/issues</Support>
-  <Project>https://github.com/YOURNAME/fwupd-webui</Project>
+  <Support>https://github.com/yuzi-co/fwupd-webui/issues</Support>
+  <Project>https://github.com/yuzi-co/fwupd-webui</Project>
   <Overview>
     Read-only firmware inventory for your server. Lists every device fwupd can see
     — NVMe drives, HBAs, network cards, Thunderbolt controllers, docks — with its
@@ -17,7 +17,7 @@
   </Overview>
   <Category>Tools: Utilities:</Category>
   <WebUI>http://[IP]:[PORT:8080]/</WebUI>
-  <Icon>https://raw.githubusercontent.com/YOURNAME/fwupd-webui/main/unraid/icon.png</Icon>
+  <Icon>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/unraid/icon.png</Icon>
 
   <Config Name="WebUI Port" Target="8080" Default="8080" Mode="tcp"
           Description="Port for the web interface" Type="Port" Display="always"
