@@ -37,6 +37,32 @@ def test_real_empty_updates_fixture_parses_to_nothing():
     assert parse_devices(load("get-updates-empty.json")) == []
 
 
+def test_real_hardware_fixture_parses():
+    """Captured from an Unraid host (8 devices). One of them, a linux_display
+    monitor, reports no Name at all -- Name is optional in fwupd's model."""
+    devices = parse_devices(load("get-devices-realhw.json"))
+    assert len(devices) == 8
+
+
+def test_device_without_name_parses():
+    device = Device.model_validate({"DeviceId": "abc", "Plugin": "linux_display"})
+    assert device.name is None
+
+
+def test_display_name_falls_back_when_name_is_absent():
+    device = Device.model_validate({"DeviceId": "abc", "Plugin": "linux_display"})
+    assert device.display_name == "Unknown linux_display device"
+
+
+def test_display_name_falls_back_without_plugin_either():
+    assert Device.model_validate({"DeviceId": "abc"}).display_name == "Unknown device"
+
+
+def test_display_name_uses_name_when_present():
+    device = Device.model_validate({"DeviceId": "abc", "Name": "CT1000P3PSSD8"})
+    assert device.display_name == "CT1000P3PSSD8"
+
+
 def test_ignores_unknown_fields():
     device = Device.model_validate(
         {
@@ -49,9 +75,9 @@ def test_ignores_unknown_fields():
     assert device.name == "Widget"
 
 
-def test_missing_required_field_fails_loudly():
+def test_missing_device_id_fails_loudly():
     with pytest.raises(ValidationError):
-        Device.model_validate({"Name": "No device id here"})
+        Device.model_validate({"Name": "No device id here"})  # DeviceId is required
 
 
 def test_defaults_for_absent_optional_fields():

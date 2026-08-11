@@ -15,7 +15,7 @@
         hx-get="/devices/{{ view.device.device_id }}"
         hx-target="next .device-detail"
         hx-swap="innerHTML">
-      <td>{{ view.device.name }}</td>
+      <td>{{ view.device.display_name }}</td>
       <td>{{ view.device.vendor or "—" }}</td>
       <td>{{ view.device.version or "—" }}</td>
       <td>

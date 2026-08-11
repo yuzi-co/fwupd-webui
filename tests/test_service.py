@@ -90,6 +90,18 @@ async def test_devices_with_updates_sort_first(tmp_path, config):
     assert [v.device.name for v in inv.devices] == ["Zulu", "Alpha"]
 
 
+async def test_sorting_survives_a_device_with_no_name(tmp_path, config):
+    """Real hardware includes devices with no Name; sorting must not crash."""
+    unnamed = Device.model_validate({"DeviceId": "u", "Plugin": "linux_display"})
+    cli = FakeCli(devices=[unnamed, make_device("a", "Alpha")])
+    service = FwupdService(cli, config, tmp_path)
+    inv = await service.inventory()
+    assert [v.device.display_name for v in inv.devices] == [
+        "Alpha",
+        "Unknown linux_display device",
+    ]
+
+
 async def test_update_failure_does_not_hide_devices(tmp_path, config):
     """A broken get-updates must still leave the user with an inventory."""
 

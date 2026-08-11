@@ -29,7 +29,10 @@ class Device(BaseModel):
     model_config = _MODEL_CONFIG
 
     device_id: str = Field(alias="DeviceId")
-    name: str = Field(alias="Name")
+    # Name is genuinely optional: a linux_display monitor on real hardware
+    # reports a DeviceId, GUID and serial but no Name at all. Requiring it took
+    # down the whole page for one unnamed device.
+    name: str | None = Field(default=None, alias="Name")
     vendor: str | None = Field(default=None, alias="Vendor")
     version: str | None = Field(default=None, alias="Version")
     plugin: str | None = Field(default=None, alias="Plugin")
@@ -40,6 +43,15 @@ class Device(BaseModel):
     guids: list[str] = Field(default_factory=list, alias="Guid")
     flags: list[str] = Field(default_factory=list, alias="Flags")
     releases: list[Release] = Field(default_factory=list, alias="Releases")
+
+    @property
+    def display_name(self) -> str:
+        """Always safe to render. Use this, never `name`, in templates and sorts."""
+        if self.name:
+            return self.name
+        if self.plugin:
+            return f"Unknown {self.plugin} device"
+        return "Unknown device"
 
     @property
     def updatable(self) -> bool:

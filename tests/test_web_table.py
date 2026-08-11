@@ -74,6 +74,24 @@ def test_index_lists_every_device(client):
     assert "LSI SAS3008" in body
 
 
+def test_index_renders_a_device_with_no_name():
+    """Regression: an unnamed linux_display device used to 500 the whole page."""
+    inventory = Inventory(
+        devices=[
+            DeviceView(
+                device=Device.model_validate({"DeviceId": "u", "Plugin": "linux_display"}),
+                available=[],
+            )
+        ],
+        metadata=MetadataStatus(last_refresh=1000.0, age_seconds=60.0, stale=False),
+        fwupd_version="2.0.20",
+    )
+    client = TestClient(create_app(FakeService(inventory), Config.from_env({})))
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "Unknown linux_display device" in resp.text
+
+
 def test_index_shows_current_versions(client):
     body = client.get("/").text
     assert "4B2QJXD7" in body

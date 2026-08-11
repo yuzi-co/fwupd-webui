@@ -1,0 +1,270 @@
+{
+  "Devices": [
+    {
+      "DeviceId": "9eecb7088b45a96c577114896e159a6c9ec82a36",
+      "InstanceIds": [
+        "DRM\\VEN_VCS&DEV_1145"
+      ],
+      "Guid": [
+        "32addaa1-8b9e-570c-8046-56cff12b51df"
+      ],
+      "Serial": "REDACTED",
+      "Plugin": "linux_display",
+      "Flags": [
+        "can-emulation-tag"
+      ],
+      "VendorIds": [
+        "PNP:VCS"
+      ],
+      "Created": 1786483011
+    },
+    {
+      "Name": "CT1000P3PSSD8",
+      "DeviceId": "3743975ad7f64f8d6575a9ae49fb3a8856fe186f",
+      "InstanceIds": [
+        "NVME\\VEN_C0A9&DEV_540A",
+        "NVME\\VEN_C0A9&DEV_540A&SUBSYS_C0A95021",
+        "CT1000P3PSSD8"
+      ],
+      "Guid": [
+        "024834f2-5768-5565-b929-e3f57c0fcd69",
+        "6d4f3936-021a-57df-bbd9-493e8f74da7e",
+        "ef8a1f6f-bc19-5799-8bd3-142cf5db443c"
+      ],
+      "Serial": "REDACTED",
+      "Summary": "NVM Express solid state drive",
+      "Plugin": "nvme",
+      "Protocols": [
+        "org.nvmexpress"
+      ],
+      "Flags": [
+        "internal",
+        "updatable",
+        "require-ac",
+        "needs-reboot",
+        "usable-during-update",
+        "can-emulation-tag"
+      ],
+      "Vendor": "Micron/Crucial Technology",
+      "VendorIds": [
+        "PCI:0xC0A9"
+      ],
+      "Version": "P9CR40A ",
+      "VersionFormat": "plain",
+      "Icons": [
+        "drive-harddisk"
+      ],
+      "Created": 1786483011
+    },
+    {
+      "Name": "Genuine Intel CPU 0000 @ 2.90GHz",
+      "DeviceId": "4bde70ba4e39b28f9eab1628f9dd6e6244c03027",
+      "InstanceIds": [
+        "CPUID\\PRO_0&FAM_06&MOD_9E",
+        "CPUID\\PRO_0&FAM_06&MOD_9E&STP_A"
+      ],
+      "Guid": [
+        "809a0b93-8a12-5338-a571-ad5583acf896",
+        "72ec2ff3-49ff-5ec2-bdbb-525badd47543"
+      ],
+      "Plugin": "cpu",
+      "Flags": [
+        "internal"
+      ],
+      "Vendor": "Intel",
+      "Version": "0x000000fa",
+      "VersionFormat": "hex",
+      "VersionRaw": 250,
+      "Icons": [
+        "computer"
+      ],
+      "Created": 1786483011
+    },
+    {
+      "Name": "ST4000VN008-2DR166",
+      "DeviceId": "51a3c776538508a7135b4b407cad2f5edd938db4",
+      "InstanceIds": [
+        "IDE\\ST4000VN008-2DR166______________________SC60",
+        "IDE\\0ST4000VN008-2DR166______________________",
+        "ST4000VN008-2DR166"
+      ],
+      "Guid": [
+        "85e08288-b797-593b-8fce-682392c3e9e0",
+        "ad8774c6-f292-5a3c-b266-f17815b550c5",
+        "0e4e853a-7481-5610-b9e5-617ad472df45"
+      ],
+      "Serial": "REDACTED",
+      "Summary": "ATA drive",
+      "Plugin": "ata",
+      "Protocols": [
+        "org.t13.ata"
+      ],
+      "Flags": [
+        "internal",
+        "updatable",
+        "require-ac",
+        "needs-reboot",
+        "usable-during-update",
+        "can-emulation-tag"
+      ],
+      "Vendor": "Seagate",
+      "VendorIds": [
+        "OUI:000c50",
+        "ATA:0x1BB1"
+      ],
+      "Version": "SC60",
+      "VersionFormat": "plain",
+      "Icons": [
+        "drive-harddisk"
+      ],
+      "Created": 1786483011
+    },
+    {
+      "Name": "ST4000VN008-2DR166",
+      "DeviceId": "2ad4580685ade1c2cb2a2a6c53d2ee26ff7c0c3f",
+      "InstanceIds": [
+        "IDE\\ST4000VN008-2DR166______________________SC60",
+        "IDE\\0ST4000VN008-2DR166______________________",
+        "ST4000VN008-2DR166"
+      ],
+      "Guid": [
+        "85e08288-b797-593b-8fce-682392c3e9e0",
+        "ad8774c6-f292-5a3c-b266-f17815b550c5",
+        "0e4e853a-7481-5610-b9e5-617ad472df45"
+      ],
+      "Serial": "REDACTED",
+      "Summary": "ATA drive",
+      "Plugin": "ata",
+      "Protocols": [
+        "org.t13.ata"
+      ],
+      "Flags": [
+        "internal",
+        "updatable",
+        "require-ac",
+        "needs-reboot",
+        "usable-during-update",
+        "can-emulation-tag"
+      ],
+      "Vendor": "Seagate",
+      "VendorIds": [
+        "OUI:000c50",
+        "ATA:0x1BB1"
+      ],
+      "Version": "SC60",
+      "VersionFormat": "plain",
+      "Icons": [
+        "drive-harddisk"
+      ],
+      "Created": 1786483011
+    },
+    {
+      "Name": "ST4000VN008-2DR166",
+      "DeviceId": "8f0ee671fc14eac3d8853624b59a81e33b0fec93",
+      "InstanceIds": [
+        "IDE\\ST4000VN008-2DR166______________________SC60",
+        "IDE\\0ST4000VN008-2DR166______________________",
+        "ST4000VN008-2DR166"
+      ],
+      "Guid": [
+        "85e08288-b797-593b-8fce-682392c3e9e0",
+        "ad8774c6-f292-5a3c-b266-f17815b550c5",
+        "0e4e853a-7481-5610-b9e5-617ad472df45"
+      ],
+      "Serial": "REDACTED",
+      "Summary": "ATA drive",
+      "Plugin": "ata",
+      "Protocols": [
+        "org.t13.ata"
+      ],
+      "Flags": [
+        "internal",
+        "updatable",
+        "require-ac",
+        "needs-reboot",
+        "usable-during-update",
+        "can-emulation-tag"
+      ],
+      "Vendor": "Seagate",
+      "VendorIds": [
+        "OUI:000c50",
+        "ATA:0x1BB1"
+      ],
+      "Version": "SC60",
+      "VersionFormat": "plain",
+      "Icons": [
+        "drive-harddisk"
+      ],
+      "Created": 1786483011
+    },
+    {
+      "Name": "ST4000VN008-2DR166",
+      "DeviceId": "a590828c7aae4b14f8da11b3b3a8fa61d4f72e19",
+      "InstanceIds": [
+        "IDE\\ST4000VN008-2DR166______________________SC60",
+        "IDE\\0ST4000VN008-2DR166______________________",
+        "ST4000VN008-2DR166"
+      ],
+      "Guid": [
+        "85e08288-b797-593b-8fce-682392c3e9e0",
+        "ad8774c6-f292-5a3c-b266-f17815b550c5",
+        "0e4e853a-7481-5610-b9e5-617ad472df45"
+      ],
+      "Serial": "REDACTED",
+      "Summary": "ATA drive",
+      "Plugin": "ata",
+      "Protocols": [
+        "org.t13.ata"
+      ],
+      "Flags": [
+        "internal",
+        "updatable",
+        "require-ac",
+        "needs-reboot",
+        "usable-during-update",
+        "can-emulation-tag"
+      ],
+      "Vendor": "Seagate",
+      "VendorIds": [
+        "OUI:000c50",
+        "ATA:0x1BB1"
+      ],
+      "Version": "SC60",
+      "VersionFormat": "plain",
+      "Icons": [
+        "drive-harddisk"
+      ],
+      "Created": 1786483011
+    },
+    {
+      "Name": "Ultra Fit",
+      "DeviceId": "bc18b0ea7d471be4d2cf819f9bb6e143f0b7535f",
+      "InstanceIds": [
+        "BLOCK\\VEN_0781&DEV_5583",
+        "SCSI\\VEN_SanDisk&DEV_Ultra-Fit",
+        "SCSI\\VEN_SanDisk&DEV_Ultra-Fit&REV_1.00"
+      ],
+      "Guid": [
+        "16b540b1-961e-56d5-953b-558e4bdde93c",
+        "4c506342-8375-5b71-82a0-13d049af45be",
+        "d6a56c53-d79e-5079-a2d0-ac041aa5af63"
+      ],
+      "Summary": "SCSI device",
+      "Plugin": "scsi",
+      "Flags": [
+        "can-emulation-tag"
+      ],
+      "Vendor": "SanDisk",
+      "VendorIds": [
+        "USB:0x0781",
+        "SCSI:SanDisk"
+      ],
+      "Version": "1.00",
+      "VersionFormat": "plain",
+      "Icons": [
+        "drive-harddisk"
+      ],
+      "Created": 1786483011
+    }
+  ]
+}

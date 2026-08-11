@@ -110,7 +110,7 @@ class FwupdService:
             DeviceView(device=d, available=list(releases_by_id.get(d.device_id, [])))
             for d in devices
         ]
-        views.sort(key=lambda v: (not v.has_update, v.device.name.lower()))
+        views.sort(key=lambda v: (not v.has_update, v.device.display_name.lower()))
 
         return Inventory(
             devices=views,
