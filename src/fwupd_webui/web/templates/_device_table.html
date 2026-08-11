@@ -1,0 +1,34 @@
+<table id="device-table">
+  <thead>
+    <tr>
+      <th>Device</th>
+      <th>Vendor</th>
+      <th>Version</th>
+      <th>Update</th>
+      <th>Plugin</th>
+      <th>Flags</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for view in inventory.devices %}
+    <tr class="device-row {% if view.has_update %}has-update{% endif %}"
+        hx-get="/devices/{{ view.device.device_id }}"
+        hx-target="next .device-detail"
+        hx-swap="innerHTML">
+      <td>{{ view.device.name }}</td>
+      <td>{{ view.device.vendor or "—" }}</td>
+      <td>{{ view.device.version or "—" }}</td>
+      <td>
+        {% if view.has_update %}
+          <span class="badge">{{ view.available[0].version }}</span>
+        {% else %}
+          <span class="muted">up to date</span>
+        {% endif %}
+      </td>
+      <td>{{ view.device.plugin or "—" }}</td>
+      <td class="flags">{{ view.device.flags | join(", ") or "—" }}</td>
+    </tr>
+    <tr><td colspan="6" class="device-detail"></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
