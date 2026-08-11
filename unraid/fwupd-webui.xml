@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>fwupd-webui</Name>
+  <Repository>ghcr.io/YOURNAME/fwupd-webui:latest</Repository>
+  <Registry>https://ghcr.io/YOURNAME/fwupd-webui</Registry>
+  <Network>bridge</Network>
+  <Privileged>true</Privileged>
+  <Support>https://github.com/YOURNAME/fwupd-webui/issues</Support>
+  <Project>https://github.com/YOURNAME/fwupd-webui</Project>
+  <Overview>
+    Read-only firmware inventory for your server. Lists every device fwupd can see
+    — NVMe drives, HBAs, network cards, Thunderbolt controllers, docks — with its
+    current firmware version and any updates available from LVFS.
+
+    This container does not flash anything. It requires privileged mode and host
+    access to /sys, /dev and /run/udev in order to enumerate hardware.
+  </Overview>
+  <Category>Tools: Utilities:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/YOURNAME/fwupd-webui/main/unraid/icon.png</Icon>
+
+  <Config Name="WebUI Port" Target="8080" Default="8080" Mode="tcp"
+          Description="Port for the web interface" Type="Port" Display="always"
+          Required="true" Mask="false">8080</Config>
+
+  <Config Name="sysfs" Target="/sys" Default="/sys" Mode="rw"
+          Description="Required: fwupd reads device attributes from sysfs"
+          Type="Path" Display="advanced" Required="true" Mask="false">/sys</Config>
+
+  <Config Name="devices" Target="/dev" Default="/dev" Mode="rw"
+          Description="Required: NVMe and SCSI ioctls need the host device nodes"
+          Type="Path" Display="advanced" Required="true" Mask="false">/dev</Config>
+
+  <Config Name="udev database" Target="/run/udev" Default="/run/udev" Mode="ro"
+          Description="Required: without this the device list comes back empty"
+          Type="Path" Display="advanced" Required="true" Mask="false">/run/udev</Config>
+
+  <Config Name="Metadata cache" Target="/var/lib/fwupd"
+          Default="/mnt/user/appdata/fwupd-webui" Mode="rw"
+          Description="Persists downloaded LVFS metadata across restarts"
+          Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/fwupd-webui</Config>
+
+  <Config Name="Metadata refresh interval (hours)" Target="FWUPD_WEBUI_REFRESH_INTERVAL_HOURS"
+          Default="24" Description="How old LVFS metadata may be before startup refetches it"
+          Type="Variable" Display="advanced" Required="false" Mask="false">24</Config>
+
+  <Config Name="LVFS remote" Target="FWUPD_WEBUI_LVFS_REMOTE" Default="lvfs"
+          Description="lvfs or lvfs-testing" Type="Variable" Display="advanced"
+          Required="false" Mask="false">lvfs</Config>
+</Container>

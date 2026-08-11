@@ -41,7 +41,7 @@ def test_zero_devices_renders_diagnostic_page_not_blank_table():
     body = client.get("/").text
     assert "No devices" in body
     assert "/run/udev" in body
-    assert "<table id=\"device-table\"" not in body
+    assert '<table id="device-table"' not in body
 
 
 def test_empty_state_lists_mount_status():
