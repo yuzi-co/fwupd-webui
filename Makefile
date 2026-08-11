@@ -12,3 +12,6 @@ test:
 
 image:
 	docker build -t fwupd-webui:dev .
+
+fixtures:
+	./scripts/capture-fixtures.sh
