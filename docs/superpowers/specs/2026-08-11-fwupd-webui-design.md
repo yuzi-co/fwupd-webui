@@ -65,9 +65,28 @@ daemon, DBus broker, or init system in the image. The container stays a single p
 
 ### Base image and fwupd version
 
-`debian:trixie-slim`, with `fwupd` installed from apt and its version pinned at build time. The
-resolved version is recorded as an image label and displayed in the UI footer, so "which fwupd is
-this" is answerable from the running container.
+`alpine:edge`, with `fwupd` installed from apk. The resolved version is recorded in the image and
+displayed in the UI header, so "which fwupd is this" is answerable from the running container.
+
+**Amended 2026-08-12.** The original choice was `debian:trixie-slim`, which pins fwupd at 2.0.20.
+Alpine edge was measured against the alternatives on real builds:
+
+| Base | fwupd | Size | Plugins |
+| --- | --- | --- | --- |
+| `debian:trixie-slim` | 2.0.20 | 503 MB | 132 |
+| `debian:forky-slim` | 2.1.7 | 519 MB | 146 |
+| `alpine:edge` | 2.1.7 | 331 MB | 144 |
+| `alpine:latest` | 2.0.20 | 328 MB | 131 |
+
+Alpine edge wins on both axes at once — current fwupd and a third off the image — and musl costs
+almost nothing: 144 plugins against Debian's 146, with musllinux wheels for every Python
+dependency so nothing compiles from source.
+
+The cost is reproducibility. Edge is a rolling development branch; package versions move
+continuously and a rebuild months from now may resolve differently or fail outright. This is
+accepted deliberately, on the reasoning that current device coverage is the whole point of an
+inventory tool, and that the integration suite running against real `fwupdtool` is what catches a
+base-image bump that breaks parsing. Run `make integration` after every rebuild.
 
 The process runs as **root**. Device enumeration requires it. This is documented rather than
 worked around.

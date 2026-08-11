@@ -1,10 +1,19 @@
-FROM debian:trixie-slim
+# Alpine edge, not a stable release, because it is the only base carrying a
+# current fwupd (2.1.7 vs 2.0.20 in Debian stable and Alpine stable) while also
+# being the smallest -- 331MB against Debian trixie's 503MB. musl costs almost
+# nothing here: 144 fwupd plugins against Debian's 146, and every Python
+# dependency ships musllinux wheels so nothing compiles from source.
+#
+# The trade-off is that edge is Alpine's rolling development branch: package
+# versions move continuously and a rebuild months from now may resolve
+# differently or fail. Rebuild deliberately, and run `make integration` after
+# every base bump -- that suite is what catches a fwupd JSON change.
+FROM alpine:edge
 
 # uv provides dependency resolution; pinned rather than :latest so builds are reproducible.
 COPY --from=ghcr.io/astral-sh/uv:0.12.3 /uv /bin/uv
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    UV_COMPILE_BYTECODE=1 \
+ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     PYTHONUNBUFFERED=1
 
@@ -13,18 +22,17 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # fixtures. Build with --build-arg WITH_TEST_DEVICES=true to enable.
 ARG WITH_TEST_DEVICES=false
 
-# fwupd brings fwupdtool. The daemon and its systemd units come along in the same
-# package but are never started -- this image has no init system.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+# fwupd brings fwupdtool, which runs the engine in-process; no daemon, no DBus
+# broker and no init system are ever started in this image.
+# bash is needed by scripts/integration-test.sh, not by the application.
+RUN apk add --no-cache \
         fwupd \
         ca-certificates \
         python3 \
-        python3-venv \
+        bash \
     && if [ "$WITH_TEST_DEVICES" = "true" ]; then \
-           apt-get install -y --no-install-recommends fwupd-tests; \
-       fi \
-    && rm -rf /var/lib/apt/lists/*
+           apk add --no-cache fwupd-tests; \
+       fi
 
 COPY docker/fwupd.conf /etc/fwupd/fwupd.conf
 

@@ -78,6 +78,26 @@ There is no fwupd daemon in this container. The backend shells out to `fwupdtool
 which runs the fwupd engine in-process — so the image needs no DBus broker and no
 init system, and stays a single Python process.
 
+### Why Alpine edge
+
+The base is `alpine:edge` rather than a stable release, because it is the only base
+that carries a current fwupd while also being the smallest. Measured on real builds:
+
+| Base | fwupd | Size | Plugins |
+| --- | --- | --- | --- |
+| `debian:trixie-slim` | 2.0.20 | 503 MB | 132 |
+| `debian:forky-slim` | 2.1.7 | 519 MB | 146 |
+| **`alpine:edge`** | **2.1.7** | **331 MB** | **144** |
+| `alpine:latest` | 2.0.20 | 328 MB | 131 |
+
+musl costs almost nothing: 144 plugins against Debian's 146, and every Python
+dependency ships musllinux wheels, so nothing compiles from source.
+
+The trade-off is reproducibility. Edge is a rolling development branch — package
+versions move continuously, and a rebuild months from now may resolve differently or
+fail. **Run `make integration` after every rebuild**; that suite exercises real
+`fwupdtool` and is what catches a base bump that changes fwupd's JSON.
+
 The `uefi_capsule` plugin is disabled in the baked `/etc/fwupd/fwupd.conf`. That is
 the plugin capable of staging a firmware capsule to the EFI system partition, which
 on Unraid is the bootable USB stick holding the OS and array configuration. Disabling

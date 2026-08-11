@@ -1,4 +1,5 @@
 import inspect
+import json
 import subprocess
 from pathlib import Path
 
@@ -59,9 +60,21 @@ def test_get_updates_returns_empty_when_nothing_to_do(monkeypatch):
 
 
 def test_version_reads_the_runtime_fwupd_entry(monkeypatch):
+    """The fixture lists several components with both runtime and compile
+    entries; version() must pick the runtime org.freedesktop.fwupd one. The
+    expectation is derived from the fixture so regenerating it against a new
+    fwupd release does not break the test."""
+    payload = json.loads(fixture("version.json"))
+    expected = next(
+        e["Version"]
+        for e in payload["Versions"]
+        if e["Type"] == "runtime" and e["AppstreamId"] == "org.freedesktop.fwupd"
+    )
+    assert len(payload["Versions"]) > 1, "fixture must exercise the selection, not a single entry"
+
     capture: dict = {}
     stub_run(monkeypatch, FakeCompleted(0, stdout=fixture("version.json")), capture)
-    assert FwupdCli().version() == "2.0.20"
+    assert FwupdCli().version() == expected
     assert capture["argv"] == ["fwupdtool", "--json", "--version"]
 
 

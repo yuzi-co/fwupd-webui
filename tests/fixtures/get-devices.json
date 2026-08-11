@@ -1,17 +1,18 @@
 {
-  "Devices" : [
+  "Devices": [
     {
-      "Name" : "Integrated Webcam?",
-      "DeviceId" : "08d460be0f1f9f128413f816022a6439e0078018",
-      "Guid" : [
+      "Name": "Integrated Webcam™",
+      "DeviceId": "08d460be0f1f9f128413f816022a6439e0078018",
+      "Guid": [
         "b585990a-003e-5270-89d5-3705a17f9a43"
       ],
-      "Summary" : "Fake webcam",
-      "Plugin" : "test",
-      "Protocols" : [
+      "Summary": "Fake webcam",
+      "DetailsUrl": "http://www.acme.com/",
+      "Plugin": "test",
+      "Protocols": [
         "com.acme.test"
       ],
-      "Flags" : [
+      "Flags": [
         "updatable",
         "supported",
         "can-verify",
@@ -19,67 +20,69 @@
         "unsigned-payload",
         "can-emulation-tag"
       ],
-      "RequestFlags" : [
+      "RequestFlags": [
         "allow-generic-message"
       ],
-      "Vendor" : "ACME Corp.",
-      "VendorIds" : [
+      "Vendor": "ACME Corp.",
+      "VendorIds": [
         "USB:0x046D"
       ],
-      "Version" : "1.2.2",
-      "VersionLowest" : "1.2.0",
-      "VersionBootloader" : "0.1.2",
-      "VersionFormat" : "triplet",
-      "Icons" : [
+      "Version": "1.2.2",
+      "VersionLowest": "1.2.0",
+      "VersionBootloader": "0.1.2",
+      "VersionFormat": "triplet",
+      "Icons": [
         "camera-web"
       ],
-      "Created" : 1786479669,
-      "Releases" : [
+      "Created": 1786484000,
+      "Releases": [
         {
-          "AppstreamId" : "fakedevice.firmware",
-          "RemoteId" : "fwupd-tests",
-          "Name" : "FakeDevice Firmware",
-          "Summary" : "Firmware for the ACME Corp Integrated Webcam",
-          "Description" : "<p>Fixes another bug with the flux capacitor to prevent time going backwards.</p>",
-          "Version" : "1.2.4",
-          "Filename" : "fakedevice124.cab",
-          "Checksum" : [
+          "AppstreamId": "fakedevice.firmware",
+          "RemoteId": "fwupd-tests",
+          "Name": "FakeDevice Firmware",
+          "Summary": "Firmware for the ACME Corp Integrated Webcam",
+          "Description": "<p>Fixes another bug with the flux capacitor to prevent time going backwards.</p>",
+          "Version": "1.2.4",
+          "Filename": "fakedevice124.cab",
+          "Checksum": [
             "fc0aabcf98bf3546c91270f2941f0acd0395dd79"
           ],
-          "License" : "GPL-2.0+",
-          "Size" : 17,
-          "Created" : 1497499200,
-          "Locations" : [
+          "License": "GPL-2.0+",
+          "Size": 17,
+          "Created": 1497499200,
+          "Locations": [
             "./fakedevice124.cab"
           ],
-          "Homepage" : "http://www.acme.com/",
-          "Vendor" : "ACME Corp",
-          "Flags" : [
+          "Homepage": "http://www.acme.com/",
+          "Urgency": "medium",
+          "Vendor": "ACME Corp",
+          "Flags": [
             "trusted-payload",
             "trusted-metadata",
             "is-upgrade"
           ]
         },
         {
-          "AppstreamId" : "fakedevice.firmware",
-          "RemoteId" : "fwupd-tests",
-          "Name" : "FakeDevice Firmware",
-          "Summary" : "Firmware for the ACME Corp Integrated Webcam",
-          "Description" : "<p>Fixes a bug with the flux capacitor to avoid year 2038 overflow.</p>",
-          "Version" : "1.2.3",
-          "Filename" : "fakedevice123.cab",
-          "Checksum" : [
+          "AppstreamId": "fakedevice.firmware",
+          "RemoteId": "fwupd-tests",
+          "Name": "FakeDevice Firmware",
+          "Summary": "Firmware for the ACME Corp Integrated Webcam",
+          "Description": "<p>Fixes a bug with the flux capacitor to avoid year 2038 overflow.</p>",
+          "Version": "1.2.3",
+          "Filename": "fakedevice123.cab",
+          "Checksum": [
             "bc3c32f42cf33fe5aade64f999417251fd8208d3"
           ],
-          "License" : "GPL-2.0+",
-          "Size" : 17,
-          "Created" : 1497499200,
-          "Locations" : [
+          "License": "GPL-2.0+",
+          "Size": 17,
+          "Created": 1497499200,
+          "Locations": [
             "./fakedevice123.cab"
           ],
-          "Homepage" : "http://www.acme.com/",
-          "Vendor" : "ACME Corp",
-          "Flags" : [
+          "Homepage": "http://www.acme.com/",
+          "Urgency": "medium",
+          "Vendor": "ACME Corp",
+          "Flags": [
             "trusted-payload",
             "trusted-metadata",
             "is-upgrade"
@@ -88,26 +91,26 @@
       ]
     },
     {
-      "Name" : "Ryzen 7 5700G with Radeon Graphics",
-      "DeviceId" : "4bde70ba4e39b28f9eab1628f9dd6e6244c03027",
-      "InstanceIds" : [
+      "Name": "Ryzen 7 5700G with Radeon Graphics",
+      "DeviceId": "4bde70ba4e39b28f9eab1628f9dd6e6244c03027",
+      "InstanceIds": [
         "CPUID\\PRO_0&FAM_19&MOD_50",
         "CPUID\\PRO_0&FAM_19&MOD_50&STP_0"
       ],
-      "Guid" : [
+      "Guid": [
         "79759cdc-94db-5098-be7b-eb02521fbbec",
         "20b595b0-5892-5870-8e4c-688133ad6e34"
       ],
-      "Plugin" : "cpu",
-      "Flags" : [
+      "Plugin": "cpu",
+      "Flags": [
         "internal"
       ],
-      "Vendor" : "AMD",
-      "VersionFormat" : "hex",
-      "Icons" : [
+      "Vendor": "AMD",
+      "VersionFormat": "hex",
+      "Icons": [
         "computer"
       ],
-      "Created" : 1786479669
+      "Created": 1786484000
     }
   ]
 }
