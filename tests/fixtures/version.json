@@ -1,0 +1,44 @@
+{
+  "Versions" : [
+    {
+      "Type" : "runtime",
+      "AppstreamId" : "org.freedesktop.fwupd",
+      "Version" : "2.0.20"
+    },
+    {
+      "Type" : "runtime",
+      "AppstreamId" : "com.hughsie.libxmlb",
+      "Version" : "0.3.22"
+    },
+    {
+      "Type" : "compile",
+      "AppstreamId" : "com.hughsie.libxmlb",
+      "Version" : "0.3.22"
+    },
+    {
+      "Type" : "runtime",
+      "AppstreamId" : "com.hughsie.libjcat",
+      "Version" : "0.2.3"
+    },
+    {
+      "Type" : "runtime",
+      "AppstreamId" : "org.kernel",
+      "Version" : "6.18.35.2-microsoft-standard-WSL2"
+    },
+    {
+      "Type" : "compile",
+      "AppstreamId" : "com.hughsie.libjcat",
+      "Version" : "0.2.3"
+    },
+    {
+      "Type" : "compile",
+      "AppstreamId" : "info.libusb",
+      "Version" : "1.0.28"
+    },
+    {
+      "Type" : "compile",
+      "AppstreamId" : "org.freedesktop.fwupd",
+      "Version" : "2.0.20"
+    }
+  ]
+}

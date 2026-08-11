@@ -34,6 +34,9 @@ run 'fwupdtool enable-test-devices >/dev/null 2>&1; fwupdtool --json get-updates
 echo "==> get-updates with no updatable devices"
 run 'fwupdtool --json get-updates' > "$OUT/get-updates-empty.json"
 
+echo "==> version"
+run 'fwupdtool --json --version' > "$OUT/version.json"
+
 echo
 echo "Captured:"
 wc -c "$OUT"/*.json
