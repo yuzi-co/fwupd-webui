@@ -1,0 +1,7 @@
+{
+  "Error" : {
+    "Domain" : "FwupdError",
+    "Code" : 9,
+    "Message" : "Metadata is already up to date"
+  }
+}

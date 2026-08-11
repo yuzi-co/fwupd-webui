@@ -11,6 +11,10 @@ log = logging.getLogger(__name__)
 _STDERR_TAIL_CHARS = 2000
 _RAW_SNIPPET_CHARS = 500
 
+# FwupdError code 9, NOTHING_TO_DO. `refresh` reports it with a non-zero exit
+# when the cached metadata is already current, which is a success condition.
+FWUPD_ERROR_NOTHING_TO_DO = 9
+
 _FWUPD_APPSTREAM_ID = "org.freedesktop.fwupd"
 
 
@@ -96,10 +100,26 @@ class FwupdCli:
         # updating, so no special-casing is required here.
         return parse_devices(self._run_json("get-updates"))
 
+    @staticmethod
+    def _error_code(stdout: str) -> int | None:
+        """Extract the FwupdError code from a JSON error payload, if there is one."""
+        try:
+            payload = json.loads(stdout)
+        except json.JSONDecodeError:
+            return None
+        error = payload.get("Error") if isinstance(payload, dict) else None
+        return error.get("Code") if isinstance(error, dict) else None
+
     def refresh(self) -> None:
         # --force skips fwupd's own "metadata is recent enough" short-circuit;
         # the refresh cadence is our policy decision, made in FwupdService.
-        self._run_json("refresh", "--force")
+        code, stdout, stderr = self._run("refresh", "--force")
+        if code == 0:
+            return
+        if self._error_code(stdout) == FWUPD_ERROR_NOTHING_TO_DO:
+            log.info("metadata already current")
+            return
+        raise FwupdCommandFailed(code, stderr)
 
     def version(self) -> str:
         code, stdout, _ = self._run("--version")

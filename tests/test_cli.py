@@ -115,6 +115,27 @@ def test_configured_timeout_is_passed_to_subprocess(monkeypatch):
     assert seen["timeout"] == 7
 
 
+def test_refresh_succeeds_when_metadata_already_current(monkeypatch):
+    """Real fwupd exits 2 with FwupdError code 9 ("Metadata is already up to
+    date") when the cache is current. That is success, not failure -- treating
+    it as an error meant the refresh stamp was never written."""
+    stub_run(monkeypatch, FakeCompleted(2, stdout=fixture("refresh-already-current.json")))
+    FwupdCli().refresh()  # must not raise
+
+
+def test_refresh_still_raises_on_a_real_error(monkeypatch):
+    payload = '{"Error": {"Domain": "FwupdError", "Code": 5, "Message": "read failed"}}'
+    stub_run(monkeypatch, FakeCompleted(2, stdout=payload, stderr="read failed"))
+    with pytest.raises(FwupdCommandFailed):
+        FwupdCli().refresh()
+
+
+def test_refresh_raises_when_failure_is_not_json(monkeypatch):
+    stub_run(monkeypatch, FakeCompleted(2, stdout="", stderr="network unreachable"))
+    with pytest.raises(FwupdCommandFailed):
+        FwupdCli().refresh()
+
+
 def test_refresh_passes_force(monkeypatch):
     capture: dict = {}
     stub_run(monkeypatch, FakeCompleted(0, stdout="{}"), capture)
