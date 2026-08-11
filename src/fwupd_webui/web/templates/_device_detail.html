@@ -1,0 +1,29 @@
+<div class="detail">
+  <dl>
+    <dt>Device ID</dt><dd><code>{{ view.device.device_id }}</code></dd>
+    <dt>Protocol</dt><dd>{{ view.device.protocol or "—" }}</dd>
+    <dt>Serial</dt><dd>{{ view.device.serial or "—" }}</dd>
+    <dt>Summary</dt><dd>{{ view.device.summary or "—" }}</dd>
+    <dt>GUIDs</dt>
+    <dd>
+      {% for guid in view.device.guids %}<code>{{ guid }}</code><br>{% else %}—{% endfor %}
+    </dd>
+  </dl>
+
+  <h3>Available releases</h3>
+  {% if view.available %}
+  <ul class="releases">
+    {% for release in view.available %}
+    <li>
+      <strong>{{ release.version }}</strong>
+      {% if release.urgency %}<span class="badge">{{ release.urgency }}</span>{% endif %}
+      {% if release.summary %}<div>{{ release.summary }}</div>{% endif %}
+      {% if release.description %}<div class="changelog">{{ release.description }}</div>{% endif %}
+      {% if release.uri %}<div><a href="{{ release.uri }}" rel="noreferrer">{{ release.uri }}</a></div>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No releases available for this device.</p>
+  {% endif %}
+</div>
