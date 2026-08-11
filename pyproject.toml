@@ -28,6 +28,9 @@ packages = ["src/fwupd_webui"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# Integration tests need a real fwupdtool binary; they run inside the container
+# image via `make integration`, not in the default suite.
+norecursedirs = ["tests/integration"]
 
 [tool.ruff]
 line-length = 100

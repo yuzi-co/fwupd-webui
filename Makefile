@@ -15,3 +15,6 @@ image:
 
 fixtures:
 	./scripts/capture-fixtures.sh
+
+integration:
+	./scripts/integration-test.sh

@@ -1,0 +1,23 @@
+services:
+  fwupd-webui:
+    build: .
+    image: fwupd-webui:dev
+    container_name: fwupd-webui
+    # Required for device enumeration. Narrowing this to an explicit capability
+    # set is a tracked follow-up, not a v1 requirement.
+    privileged: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - /sys:/sys
+      - /dev:/dev
+      # fwupd enumerates through the udev database; without this the device
+      # list comes back empty rather than erroring.
+      - /run/udev:/run/udev:ro
+      - fwupd-metadata:/var/lib/fwupd
+    environment:
+      FWUPD_WEBUI_LOG_LEVEL: info
+    restart: unless-stopped
+
+volumes:
+  fwupd-metadata:
