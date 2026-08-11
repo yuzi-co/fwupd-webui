@@ -5,7 +5,7 @@ from fwupd_webui.config import Config
 
 def test_defaults_when_env_empty():
     cfg = Config.from_env({})
-    assert cfg.port == 8080
+    assert cfg.port == 8099
     assert cfg.refresh_interval_hours == 24
     assert cfg.timeout_seconds == 120
     assert cfg.lvfs_remote == "lvfs"

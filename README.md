@@ -20,7 +20,7 @@ the natural distribution mechanism on that platform.
 ```bash
 docker run -d --name fwupd-webui \
   --privileged \
-  -p 8080:8080 \
+  -p 8099:8099 \
   -v /sys:/sys \
   -v /dev:/dev \
   -v /run/udev:/run/udev:ro \
@@ -41,7 +41,7 @@ Narrowing this to an explicit capability set is a planned improvement.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `FWUPD_WEBUI_PORT` | `8080` | Listen port |
+| `FWUPD_WEBUI_PORT` | `8099` | Listen port |
 | `FWUPD_WEBUI_REFRESH_INTERVAL_HOURS` | `24` | Age above which startup refetches LVFS metadata |
 | `FWUPD_WEBUI_TIMEOUT_SECONDS` | `120` | Hard timeout per fwupdtool invocation |
 | `FWUPD_WEBUI_LVFS_REMOTE` | `lvfs` | `lvfs` or `lvfs-testing` |

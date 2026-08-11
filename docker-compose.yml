@@ -7,7 +7,7 @@ services:
     # set is a tracked follow-up, not a v1 requirement.
     privileged: true
     ports:
-      - "8080:8080"
+      - "8099:8099"
     volumes:
       - /sys:/sys
       - /dev:/dev

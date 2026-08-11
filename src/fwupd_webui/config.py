@@ -19,7 +19,7 @@ def _int_env(env: Mapping[str, str], key: str, default: int) -> int:
 
 @dataclass(frozen=True)
 class Config:
-    port: int = 8080
+    port: int = 8099
     refresh_interval_hours: int = 24
     timeout_seconds: int = 120
     lvfs_remote: str = "lvfs"
@@ -34,7 +34,7 @@ class Config:
                 f"FWUPD_WEBUI_LVFS_REMOTE must be one of {sorted(VALID_REMOTES)}, got {remote!r}"
             )
         return cls(
-            port=_int_env(e, "FWUPD_WEBUI_PORT", 8080),
+            port=_int_env(e, "FWUPD_WEBUI_PORT", 8099),
             refresh_interval_hours=_int_env(e, "FWUPD_WEBUI_REFRESH_INTERVAL_HOURS", 24),
             timeout_seconds=_int_env(e, "FWUPD_WEBUI_TIMEOUT_SECONDS", 120),
             lvfs_remote=remote,

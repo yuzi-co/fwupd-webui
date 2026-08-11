@@ -48,7 +48,7 @@ ENV PATH="/app/.venv/bin:${PATH}"
 RUN fwupdtool --version --json > /app/fwupd-version.json || \
     fwupdtool --version > /app/fwupd-version.txt
 
-EXPOSE 8080
+EXPOSE 8099
 
 # Runs as root deliberately: device enumeration requires it.
 CMD ["python", "-m", "fwupd_webui"]

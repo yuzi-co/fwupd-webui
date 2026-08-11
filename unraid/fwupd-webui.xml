@@ -16,12 +16,12 @@
     access to /sys, /dev and /run/udev in order to enumerate hardware.
   </Overview>
   <Category>Tools: Utilities:</Category>
-  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <WebUI>http://[IP]:[PORT:8099]/</WebUI>
   <Icon>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/unraid/icon.png</Icon>
 
-  <Config Name="WebUI Port" Target="8080" Default="8080" Mode="tcp"
+  <Config Name="WebUI Port" Target="8099" Default="8099" Mode="tcp"
           Description="Port for the web interface" Type="Port" Display="always"
-          Required="true" Mask="false">8080</Config>
+          Required="true" Mask="false">8099</Config>
 
   <Config Name="sysfs" Target="/sys" Default="/sys" Mode="rw"
           Description="Required: fwupd reads device attributes from sysfs"
