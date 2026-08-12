@@ -228,9 +228,11 @@ re-enumerated once. The result view compares the reported version against the ta
 device's flags to state either that the firmware is live, or that it is staged and what is required
 to finish it. It never offers to reboot or activate.
 
-**Templates.** `_flash_confirm.html`, `flash_progress.html`, `_flash_progress.html`,
-`_flash_result.html`. All autoescaped; release changelogs are vendor-supplied strings and never
-receive `| safe`.
+**Templates.** `_flash_confirm.html`, `flash_progress.html`, and `_flash_progress.html`. The last
+renders every job state including the terminal ones, rather than handing off to a separate result
+template — the polled fragment and the result view are then the same element, so there is no
+swap-target to get wrong at the moment the job finishes. All autoescaped; release changelogs are
+vendor-supplied strings and never receive `| safe`.
 
 ## Testing
 
