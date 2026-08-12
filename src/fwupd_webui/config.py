@@ -39,6 +39,7 @@ class Config:
     refresh_interval_hours: int = 24
     timeout_seconds: int = 120
     install_timeout_seconds: int = 1800
+    api_cache_seconds: int = 60
     lvfs_remote: str = "lvfs"
     log_level: str = "info"
     enable_flashing: bool = False
@@ -56,6 +57,7 @@ class Config:
             refresh_interval_hours=_int_env(e, "FWUPD_WEBUI_REFRESH_INTERVAL_HOURS", 24),
             timeout_seconds=_int_env(e, "FWUPD_WEBUI_TIMEOUT_SECONDS", 120),
             install_timeout_seconds=_int_env(e, "FWUPD_WEBUI_INSTALL_TIMEOUT_SECONDS", 1800),
+            api_cache_seconds=_int_env(e, "FWUPD_WEBUI_API_CACHE_SECONDS", 60),
             lvfs_remote=remote,
             log_level=e.get("FWUPD_WEBUI_LOG_LEVEL", "info"),
             enable_flashing=_bool_env(e, "FWUPD_WEBUI_ENABLE_FLASHING", False),

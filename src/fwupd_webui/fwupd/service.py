@@ -66,6 +66,7 @@ class FwupdService:
         self._clock = clock
         self._lock = asyncio.Lock()
         self.flash_manager = FlashManager(cli)
+        self._cached: tuple[float, Inventory] | None = None
 
     async def _call(self, fn, *args):
         async with self._lock:
@@ -122,6 +123,34 @@ class FwupdService:
             fwupd_version=version,
             flashing_enabled=self._config.enable_flashing,
         )
+
+    async def cached_inventory(self, max_age_seconds: float | None = None) -> Inventory:
+        """Inventory, re-enumerating only when the cached copy has aged out.
+
+        Exists for the monitoring API. Enumeration takes seconds and issues real
+        commands to real disks, so a monitor polling every 15s would hammer the
+        hardware; serving a slightly stale snapshot is the right trade for a
+        report whose whole job is to be polled on a timer.
+
+        While a flash is running the cached copy is returned unconditionally --
+        enumerating would block on the hardware lock behind a write that may
+        take minutes.
+        """
+        max_age = self._config.api_cache_seconds if max_age_seconds is None else max_age_seconds
+        now = self._clock()
+
+        if self._cached is not None:
+            captured, inventory = self._cached
+            if self.flash_manager.active or now - captured < max_age:
+                return inventory
+
+        if self.flash_manager.active:
+            # Nothing cached and a flash is in flight: refuse rather than block.
+            raise FwupdError("a flash is in progress and no inventory has been captured yet")
+
+        inventory = await self.inventory()
+        self._cached = (now, inventory)
+        return inventory
 
     async def refresh(self) -> MetadataStatus:
         try:

@@ -175,3 +175,53 @@ async def test_the_lock_is_released_after_a_flash(tmp_path):
     await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
     inventory = await svc.inventory()
     assert len(inventory.devices) == 1
+
+
+async def test_cached_inventory_does_not_re_enumerate_within_the_window(tmp_path):
+    """A monitor polling every few seconds must not issue fresh NVMe and SCSI
+    commands each time."""
+    svc = service(tmp_path)
+    cli = svc._stub_cli
+    calls = []
+    original = cli.get_devices
+    cli.get_devices = lambda: (calls.append(1), original())[1]
+
+    await svc.cached_inventory(max_age_seconds=300)
+    first = len(calls)
+    await svc.cached_inventory(max_age_seconds=300)
+    await svc.cached_inventory(max_age_seconds=300)
+
+    assert len(calls) == first, "cached window should serve without touching hardware"
+
+
+async def test_cached_inventory_re_enumerates_once_stale(tmp_path):
+    svc = service(tmp_path)
+    cli = svc._stub_cli
+    calls = []
+    original = cli.get_devices
+    cli.get_devices = lambda: (calls.append(1), original())[1]
+
+    await svc.cached_inventory(max_age_seconds=0)
+    first = len(calls)
+    await svc.cached_inventory(max_age_seconds=0)
+
+    assert len(calls) > first
+
+
+async def test_cached_inventory_serves_the_snapshot_during_a_flash(tmp_path):
+    """Enumerating mid-flash would block on the hardware lock behind a write
+    that can take minutes."""
+    from fwupd_webui.fwupd.flash import FlashJob, FlashStatus
+
+    svc = service(tmp_path)
+    await svc.cached_inventory(max_age_seconds=0)
+
+    running = FlashJob(device_id="dev-1", device_name="N", version="1")
+    running.status = FlashStatus.RUNNING
+    svc.flash_manager.job = running
+
+    cli = svc._stub_cli
+    cli.get_devices = lambda: pytest.fail("must not enumerate during a flash")
+
+    inventory = await svc.cached_inventory(max_age_seconds=0)
+    assert inventory is not None
