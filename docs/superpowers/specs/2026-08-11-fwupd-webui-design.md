@@ -65,28 +65,48 @@ daemon, DBus broker, or init system in the image. The container stays a single p
 
 ### Base image and fwupd version
 
-`alpine:edge`, with `fwupd` installed from apk. The resolved version is recorded in the image and
+`debian:forky-slim`, pinned to a `snapshot.debian.org` archive timestamp via the `DEBIAN_SNAPSHOT`
+build argument, with `fwupd` installed from apt. The resolved version is recorded in the image and
 displayed in the UI header, so "which fwupd is this" is answerable from the running container.
 
-**Amended 2026-08-12.** The original choice was `debian:trixie-slim`, which pins fwupd at 2.0.20.
-Alpine edge was measured against the alternatives on real builds:
+**Amended 2026-08-12.** The original choice was `debian:trixie-slim`, which pins fwupd at 2.0.20;
+`trixie-backports` carries the same version, so staying on stable was a dead end. Four routes to a
+current fwupd were evaluated on real builds:
 
 | Base | fwupd | Size | Plugins |
 | --- | --- | --- | --- |
 | `debian:trixie-slim` | 2.0.20 | 503 MB | 132 |
-| `debian:forky-slim` | 2.1.7 | 519 MB | 146 |
+| `debian:forky-slim` (chosen) | 2.1.7 | 472 MB | 146 |
 | `alpine:edge` | 2.1.7 | 331 MB | 144 |
 | `alpine:latest` | 2.0.20 | 328 MB | 131 |
 
-Alpine edge wins on both axes at once — current fwupd and a third off the image — and musl costs
-almost nothing: 144 plugins against Debian's 146, with musllinux wheels for every Python
-dependency so nothing compiles from source.
+Alpine edge reaches the same fwupd 141 MB smaller, and musl costs little on capability — 144
+plugins against Debian's 146, with musllinux wheels for every Python dependency. It was the
+initial choice for that reason, and then reversed.
 
-The cost is reproducibility. Edge is a rolling development branch; package versions move
-continuously and a rebuild months from now may resolve differently or fail outright. This is
-accepted deliberately, on the reasoning that current device coverage is the whole point of an
-inventory tool, and that the integration suite running against real `fwupdtool` is what catches a
-base-image bump that breaks parsing. Run `make integration` after every rebuild.
+The deciding axis is reproducibility. Both forky and edge are moving targets, but only one can be
+frozen. Debian publishes `snapshot.debian.org`, an immutable content-addressed archive; pinning a
+timestamp makes the build resolve to identical packages on any future rebuild, verified against
+`20260810T000000Z` yielding fwupd 2.1.7-2. Alpine edge has no snapshot archive by construction —
+packages are replaced in place — so an edge build cannot be pinned at all, and "a rebuild months
+from now may resolve differently or fail" is a permanent property of it rather than a solvable one.
+forky additionally gates package migration on ten days without a release-critical bug, where edge
+ships on commit, and forky eventually freezes into Debian 14.
+
+Two costs are accepted explicitly. Security updates arrive only when the pin is bumped, which
+matters more than usual for a privileged container, and Debian covers testing more thinly than
+stable. Bump `DEBIAN_SNAPSHOT` deliberately and run `make integration` afterwards — that suite
+exercises real `fwupdtool` and is what catches a version bump that breaks parsing.
+
+**Building fwupd from source was rejected.** Upstream publishes no Linux binary: every release
+carries a Windows MSI, a source tarball, a signature and a checksum, nothing more. Its only Linux
+binary channel is the official snap, which needs snapd, squashfs loopback mounts and systemd inside
+the container — the exact daemon stack this design exists to avoid — and is `confinement: strict`
+on `base: core24`, so it is glibc-only and sandboxes device access. Git `main` past 2.1.7 is 158
+commits across 300 files, almost entirely `libfwupdplugin` stream-class refactoring plus a new Rust
+FFI link, containing exactly one new device driver (a FocalTech fingerprint sensor). Pinning a
+fwupd commit would also leave its twenty-odd runtime dependencies unpinned, so it does not even
+deliver the reproducibility that motivated the move.
 
 The process runs as **root**. Device enumeration requires it. This is documented rather than
 worked around.
@@ -229,7 +249,7 @@ Environment variables only:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `FWUPD_WEBUI_PORT` | `8080` | Listen port |
+| `FWUPD_WEBUI_PORT` | `8099` | Listen port |
 | `FWUPD_WEBUI_REFRESH_INTERVAL_HOURS` | `24` | Age above which startup triggers a metadata refresh |
 | `FWUPD_WEBUI_TIMEOUT_SECONDS` | `120` | Hard timeout per `fwupdtool` invocation |
 | `FWUPD_WEBUI_LVFS_REMOTE` | `lvfs` | `lvfs` or `lvfs-testing` |

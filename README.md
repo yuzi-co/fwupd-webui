@@ -78,25 +78,44 @@ There is no fwupd daemon in this container. The backend shells out to `fwupdtool
 which runs the fwupd engine in-process — so the image needs no DBus broker and no
 init system, and stays a single Python process.
 
-### Why Alpine edge
+### Why Debian forky, pinned to a snapshot
 
-The base is `alpine:edge` rather than a stable release, because it is the only base
-that carries a current fwupd while also being the smallest. Measured on real builds:
+The base is `debian:forky-slim` pinned to a `snapshot.debian.org` timestamp. Debian
+stable (trixie) carries fwupd 2.0.20 and `trixie-backports` offers nothing newer, so
+a current fwupd means leaving stable. Measured on real builds:
 
 | Base | fwupd | Size | Plugins |
 | --- | --- | --- | --- |
 | `debian:trixie-slim` | 2.0.20 | 503 MB | 132 |
-| `debian:forky-slim` | 2.1.7 | 519 MB | 146 |
-| **`alpine:edge`** | **2.1.7** | **331 MB** | **144** |
+| **`debian:forky-slim`** | **2.1.7** | **472 MB** | **146** |
+| `alpine:edge` | 2.1.7 | 331 MB | 144 |
 | `alpine:latest` | 2.0.20 | 328 MB | 131 |
 
-musl costs almost nothing: 144 plugins against Debian's 146, and every Python
-dependency ships musllinux wheels, so nothing compiles from source.
+Alpine edge reaches the same fwupd in a third less space, but edge has no snapshot
+archive — its packages are replaced in place, so an edge build cannot be pinned at
+all. forky is testing rather than stable, and its package versions do move, but
+pinning an immutable archive timestamp makes that irrelevant: this Dockerfile
+resolves to identical packages on any future rebuild. Reproducibility is worth the
+141 MB here, and glibc keeps every upstream Linux binary artifact usable, all of
+which are glibc-linked.
 
-The trade-off is reproducibility. Edge is a rolling development branch — package
-versions move continuously, and a rebuild months from now may resolve differently or
-fail. **Run `make integration` after every rebuild**; that suite exercises real
-`fwupdtool` and is what catches a base bump that changes fwupd's JSON.
+Two consequences worth knowing:
+
+- **Security updates arrive only when you bump the pin.** That is the cost of a
+  frozen archive, and it matters more than usual because the container runs
+  privileged. Debian's security team also covers testing more thinly than stable.
+- **Bump `DEBIAN_SNAPSHOT` deliberately, then run `make integration`.** That suite
+  exercises real `fwupdtool` and is what catches a version bump that changes fwupd's
+  JSON output.
+
+```bash
+docker build --build-arg DEBIAN_SNAPSHOT=20260810T000000Z -t fwupd-webui:dev .
+```
+
+Building fwupd from source was considered and rejected: upstream publishes no Linux
+binary (releases carry a Windows MSI and a source tarball), git `main` past 2.1.7 is
+158 commits of internal refactor with one new device driver, and pinning a fwupd
+commit would still leave its twenty-odd runtime dependencies unpinned.
 
 The `uefi_capsule` plugin is disabled in the baked `/etc/fwupd/fwupd.conf`. That is
 the plugin capable of staging a firmware capsule to the EFI system partition, which
