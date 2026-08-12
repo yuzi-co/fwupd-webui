@@ -8,41 +8,25 @@ def device(**kwargs) -> Device:
     return Device.model_validate(payload)
 
 
-def test_allowlisted_peripheral_is_permitted():
-    perm = evaluate(device(Plugin="logitech_hidpp", Flags=["updatable"]), enabled=True)
-    assert perm.allowed is True
-    assert perm.needs_override is False
-    assert perm.is_storage is False
+def test_every_updatable_device_is_flashable_and_needs_the_typed_name():
+    """One rule, no allowlist. Classifying plugins as safe or unsafe was a
+    judgement this project got wrong twice; removing the category removes the
+    bug class. Typing a name costs seconds on a machine flashed twice a year."""
+    for plugin in ("logitech_hidpp", "thunderbolt", "nvme", "ata", "brand_new_plugin"):
+        perm = evaluate(device(Plugin=plugin, Flags=["updatable"]), enabled=True)
+        assert perm.flashable is True, plugin
 
 
-def test_wacom_is_allowlisted():
-    for plugin in ("wacom_usb", "wacom_raw"):
-        assert evaluate(device(Plugin=plugin, Flags=["updatable"]), enabled=True).allowed is True
-
-
-def test_thunderbolt_is_allowlisted():
-    perm = evaluate(device(Plugin="thunderbolt", Flags=["updatable"]), enabled=True)
-    assert perm.allowed is True
-
-
-def test_every_storage_plugin_requires_an_override():
-    """Storage is never one-click, whatever the allowlist says. A drive that
-    holds data is dangerous to flash because something is using it, not
-    because of which plugin drives it."""
+def test_storage_devices_are_marked_as_such():
     for plugin in ("nvme", "ata", "scsi", "emmc"):
         perm = evaluate(device(Plugin=plugin, Flags=["updatable"]), enabled=True)
-        assert perm.allowed is False, plugin
-        assert perm.needs_override is True, plugin
         assert perm.is_storage is True, plugin
 
 
-def test_nvme_is_not_one_click_even_though_it_is_runtime_safe():
-    """Regression. nvme was allowlisted, which made the deployed host's cache
-    pool -- the drive Docker itself runs from -- the easiest thing in the UI
-    to flash, while the array disks needed a typed name."""
-    perm = evaluate(device(Plugin="nvme", Flags=["updatable"]), enabled=True)
-    assert perm.allowed is False
-    assert perm.is_storage is True
+def test_non_storage_devices_are_not_marked_as_storage():
+    for plugin in ("logitech_hidpp", "thunderbolt", "wacom_usb", "brand_new_plugin"):
+        perm = evaluate(device(Plugin=plugin, Flags=["updatable"]), enabled=True)
+        assert perm.is_storage is False, plugin
 
 
 def test_storage_reason_warns_about_data():
@@ -50,36 +34,30 @@ def test_storage_reason_warns_about_data():
     assert "data" in perm.reason.lower()
 
 
-def test_unknown_plugin_requires_an_override_but_is_not_storage():
-    """Fail-safe: a plugin fwupd adds in a future release is not flashable
-    by default. It is also not mislabelled as a storage hazard."""
-    perm = evaluate(device(Plugin="brand_new_plugin", Flags=["updatable"]), enabled=True)
-    assert perm.allowed is False
-    assert perm.needs_override is True
-    assert perm.is_storage is False
+def test_non_storage_reason_does_not_cry_wolf_about_data():
+    """A mouse receiver must not carry a data-loss warning, or the warning
+    stops meaning anything on the devices that need it."""
+    perm = evaluate(device(Plugin="logitech_hidpp", Flags=["updatable"]), enabled=True)
+    assert "data" not in perm.reason.lower()
 
 
-def test_device_without_updatable_flag_offers_nothing():
+def test_device_without_updatable_flag_is_not_flashable():
     perm = evaluate(device(Plugin="logitech_hidpp", Flags=["internal"]), enabled=True)
-    assert perm.allowed is False
-    assert perm.needs_override is False
+    assert perm.flashable is False
     assert "not updatable" in perm.reason
 
 
-def test_nothing_is_permitted_when_flashing_is_disabled():
-    perm = evaluate(device(Plugin="logitech_hidpp", Flags=["updatable"]), enabled=False)
-    assert perm.allowed is False
-    assert perm.needs_override is False
+def test_nothing_is_flashable_when_flashing_is_disabled():
+    perm = evaluate(device(Plugin="nvme", Flags=["updatable"]), enabled=False)
+    assert perm.flashable is False
     assert "FWUPD_WEBUI_ENABLE_FLASHING" in perm.reason
 
 
 def test_needs_reboot_does_not_block():
     """Every updatable device on the deployed host reports needs-reboot.
     Blocking on it would disable the feature entirely."""
-    perm = evaluate(
-        device(Plugin="logitech_hidpp", Flags=["updatable", "needs-reboot"]), enabled=True
-    )
-    assert perm.allowed is True
+    perm = evaluate(device(Plugin="nvme", Flags=["updatable", "needs-reboot"]), enabled=True)
+    assert perm.flashable is True
 
 
 def test_override_accepts_the_exact_device_name():
@@ -98,3 +76,10 @@ def test_override_rejects_absent_input():
 def test_override_uses_display_name_for_unnamed_devices():
     unnamed = Device.model_validate({"DeviceId": "u", "Plugin": "linux_display"})
     assert check_override(unnamed, "Unknown linux_display device") is True
+
+
+def test_there_is_no_allowlist_left_to_get_wrong():
+    """Regression guard on the design decision, not just the behaviour."""
+    import fwupd_webui.fwupd.policy as policy
+
+    assert not hasattr(policy, "RUNTIME_SAFE_PLUGINS")

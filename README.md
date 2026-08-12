@@ -46,10 +46,9 @@ exist — `POST /flash` is a genuine 404, not a handler that refuses.
 
 With it on, four things still stand between a click and a write:
 
-1. Only peripherals flash directly — `thunderbolt`, `logitech_hidpp`, `wacom_usb`,
-   `wacom_raw`. **Every storage device** (`nvme`, `ata`, `scsi`, `emmc`) requires
-   typing the device name exactly, and shows a prominent data-loss warning. So does
-   any plugin not on the list, so a plugin a future fwupd adds fails safe.
+1. **Nothing flashes without typing the device name exactly.** There is no
+   allowlist and no one-click path. Storage devices (`nvme`, `ata`, `scsi`, `emmc`)
+   additionally show a prominent data-loss warning.
 2. Policy is enforced server-side. A disabled button is a suggestion; the server
    refusing the POST is the control.
 3. There is no cancel. Killing a flash mid-write can leave partially written
