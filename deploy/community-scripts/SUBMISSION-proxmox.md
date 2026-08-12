@@ -1,4 +1,12 @@
-# ProxmoxVED pull request — draft
+# ProxmoxVED pull request — draft (ON HOLD)
+
+> **Do not submit yet.** The project fails two of their four Application Requirements
+> for new scripts: it must be at least 6 months old (created 2026-08-11) and have 600+
+> GitHub stars (has 0). [PR #2172](https://github.com/community-scripts/ProxmoxVED/pull/2172)
+> was opened and auto-closed by their validation bot. The draft below stays here for when
+> the project qualifies; when that day comes, use their template verbatim from
+> `.github/pull_request_template.md` — including the Application Requirements and Source
+> sections — and paste this write-up into its Description field.
 
 **Target:** https://github.com/community-scripts/ProxmoxVED (NOT ProxmoxVE — new
 scripts opened against ProxmoxVE are closed without review.)

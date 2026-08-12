@@ -14,6 +14,29 @@ only the submitter can honestly tick.
 
 ## Proxmox — community-scripts
 
+> **BLOCKED on eligibility, not on the code.** Do not submit yet.
+>
+> Their PR template carries an Application Requirements section that new scripts must
+> satisfy, enforced by a bot that closes non-compliant PRs automatically:
+>
+> | Requirement | Status |
+> | --- | --- |
+> | At least 6 months old | created 2026-08-11 ❌ |
+> | 600+ GitHub stars | 0 ❌ |
+> | Actively maintained | ✅ |
+> | Official release tarballs | ✅ (v0.1.0, v0.1.1) |
+>
+> A first attempt — [ProxmoxVED#2172](https://github.com/community-scripts/ProxmoxVED/pull/2172)
+> — was opened and auto-closed for missing that template section. Reopening was not
+> attempted: their bot asks explicitly that maintainers not be pinged about closed PRs,
+> and fixing the template would not fix the two failing thresholds. Ticking those boxes
+> to get through would be false.
+>
+> The files below are ready and correct; the project is not old or known enough yet.
+> Revisit around **February 2027** at the earliest, or once the repository has traction.
+> Their bot notes the team periodically revisits closed submissions of projects that
+> prove valuable, so #2172 stands as a marker.
+
 New scripts go to **[ProxmoxVED](https://github.com/community-scripts/ProxmoxVED)**,
 their testing repository. PRs adding new scripts directly to ProxmoxVE are closed
 without review.
@@ -45,6 +68,14 @@ it performs is the same as `deploy/install.sh`, which is tested, and the privile
 container assumption is confirmed on a real Proxmox host. ProxmoxVED exists for exactly
 this validation step.
 
+### Lesson worth keeping
+
+The script files were checked carefully against `AGENTS.md` and the repo's conventions,
+and the *eligibility rules* were not checked at all — they sit further down the same PR
+template that was only read in part. That is the wrong order: no amount of correct
+formatting matters if the project cannot be submitted yet. Check whether a catalogue will
+accept a project before writing anything for it.
+
 ## Unraid — Community Applications
 
 CA does not host templates. It indexes template repositories and scrapes the XML from
@@ -55,3 +86,6 @@ Registration is a request to the CA maintainers rather than a pull request; the 
 point is the Community Applications support thread on the Unraid forums. Once a
 repository is listed, CA picks up every template in it automatically and re-scrapes on a
 schedule.
+
+**Still viable.** CA publishes no age or popularity thresholds, unlike community-scripts,
+so this submission is not blocked — see [`SUBMISSION-unraid.md`](SUBMISSION-unraid.md).
