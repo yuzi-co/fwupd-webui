@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
+from fwupd_webui import app_version
 from fwupd_webui.fwupd.cli import FwupdError
 from fwupd_webui.fwupd.service import Inventory
 
@@ -72,6 +73,7 @@ async def status(request: Request) -> JSONResponse:
             status_code=503,
             content={
                 "status": "error",
+                "version": app_version(),
                 "error": str(exc),
                 "flashing_enabled": bool(getattr(service, "flashing_enabled", False)),
                 "flash": _flash_payload(job),
@@ -90,6 +92,7 @@ async def status(request: Request) -> JSONResponse:
     return JSONResponse(
         content={
             "status": state,
+            "version": app_version(),
             "fwupd_version": inventory.fwupd_version,
             "flashing_enabled": bool(getattr(service, "flashing_enabled", False)),
             "devices": {

@@ -133,3 +133,18 @@ def test_refresh_endpoint_calls_service_and_returns_table(client):
     assert resp.status_code == 200
     assert client.app.state.fake_service.refresh_calls == 1
     assert "Samsung SSD 990 PRO" in resp.text
+
+
+def test_header_shows_the_application_version(client):
+    """fwupd's version was already shown; the app's own was not, so 'which
+    build is this' had no answer in the UI."""
+    from fwupd_webui import app_version
+
+    body = client.get("/").text
+    assert f"v{app_version()}" in body
+
+
+def test_header_distinguishes_app_version_from_fwupd_version(client):
+    body = client.get("/").text
+    assert "fwupd-webui" in body
+    assert "fwupd 2.0.20" in body
