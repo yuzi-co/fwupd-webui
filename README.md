@@ -1,24 +1,22 @@
 # fwupd-webui
 
-A web UI for [fwupd](https://fwupd.org), packaged as a Docker container for Unraid and
-other systems without a native fwupd installation. Read-only by default; firmware
-flashing is available behind an explicit opt-in.
+A web UI for [fwupd](https://fwupd.org). It lists every device fwupd can enumerate —
+NVMe drives, SATA disks, HBAs, network cards, Thunderbolt controllers, docks, BIOS flash
+— with current firmware versions and any updates available from LVFS.
 
-It lists every device fwupd can enumerate — NVMe drives, HBAs, network cards,
-Thunderbolt controllers, docks — with current firmware versions and any updates
-available from LVFS.
+Runs on any Linux host: as a Docker container, as an LXC guest, or natively under
+systemd. It started as an Unraid container and is no longer limited to it.
 
 **Flashing is off by default.** Out of the box this is a read-only inventory. Setting
 `FWUPD_WEBUI_ENABLE_FLASHING=true` enables the firmware write path; without it the flash
 routes are not registered at all.
 
-## Why a container
+**It never writes system firmware.** BIOS, UEFI capsule and SPI flash updates are
+refused outright, on every deployment target. See [Flashing firmware](#flashing-firmware).
 
-Unraid runs Slackware from a USB stick with the OS in RAM and no persistent package
-manager, so there is no practical way to install fwupd on the host. A container is
-the natural distribution mechanism on that platform.
+## Install
 
-## Running it
+### Docker, anywhere
 
 ```bash
 docker run -d --name fwupd-webui \
@@ -27,17 +25,79 @@ docker run -d --name fwupd-webui \
   -v /sys:/sys \
   -v /dev:/dev \
   -v /run/udev:/run/udev:ro \
-  -v /mnt/user/appdata/fwupd-webui:/var/lib/fwupd \
+  -v fwupd-metadata:/var/lib/fwupd \
   ghcr.io/yuzi-co/fwupd-webui:latest
 ```
 
-On Unraid, install from Community Applications instead — the template sets all of
-this up for you.
+Or use the bundled [`docker-compose.yml`](docker-compose.yml).
+
+### Unraid
+
+Install from Community Applications, or add
+[`unraid/fwupd-webui.xml`](unraid/fwupd-webui.xml) as a template. It sets up the mounts,
+the port and the flashing toggle for you.
+
+Unraid runs Slackware from a USB stick with the OS in RAM and no persistent package
+manager, so a container is the only practical route there.
+
+### Proxmox LXC
+
+Run **on the Proxmox host**:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/deploy/proxmox-lxc.sh)"
+```
+
+Creates a privileged Debian LXC, installs into it and starts it. It prompts before
+creating anything, and auto-detects your rootfs storage, template storage and
+architecture rather than assuming `local-lvm`.
+
+The container reports the firmware of the **Proxmox host**, not of itself — an LXC
+shares the host kernel, so `/sys` and `/dev` describe the real machine.
+
+Override any of `CTID`, `CT_HOSTNAME`, `STORAGE`, `TEMPLATE_STORAGE`, `DISK_GB`,
+`CORES`, `RAM_MB`, `BRIDGE`, `PORT`, `ENABLE_FLASHING`.
+
+### Debian or Ubuntu, natively
+
+For an existing LXC, a VM or bare metal, with no Docker:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/deploy/install.sh | bash
+```
+
+Installs to `/opt/fwupd-webui`, runs as a systemd service, configured in
+`/etc/fwupd-webui/env`. Re-running it upgrades in place.
+
+```bash
+systemctl status fwupd-webui
+journalctl -u fwupd-webui -f
+```
+
+Note that a native install uses your distribution's fwupd. Debian 13 ships 2.0.20 where
+the Docker image ships 2.1.x, which is a device-coverage difference rather than a fault.
+
+## Requirements
+
+Whatever the deployment, fwupd needs three things from the host:
+
+| Path | Why |
+| --- | --- |
+| `/sys` | fwupd reads sysfs attributes |
+| `/dev` | NVMe, SCSI generic and MTD ioctls |
+| `/run/udev` | fwupd enumerates through the udev database |
+
+`/run/udev` is the one that bites. Without it enumeration returns a nearly empty device
+list rather than an error, which looks like a broken install. The UI has a diagnostic
+screen for exactly this case.
 
 ### Why privileged
 
 Enumerating firmware means talking to hardware: NVMe admin commands, SCSI generic
-ioctls, sysfs attributes. That needs privileges a normal container does not have.
+ioctls, sysfs attributes. That needs privileges a normal container does not have. The
+Proxmox LXC is privileged with full device access for the same reason — that is the LXC
+equivalent of `--privileged`, and worth treating with the same care as root on the host.
+
 Narrowing this to an explicit capability set is a planned improvement.
 
 ### Flashing firmware
@@ -56,7 +116,13 @@ With it on, four things still stand between a click and a write:
    refusing the POST is the control.
 3. There is no cancel. Killing a flash mid-write can leave partially written
    firmware, so a job runs to completion or fails on its own.
-4. `uefi_capsule` remains disabled in the image, so BIOS updates stay unreachable.
+4. **System firmware is refused outright.** `uefi_capsule`, `uefi_dbx` and `mtd` are
+   never flashable, whatever else is true of them. The first two stage to the EFI
+   system partition; `mtd` writes the SPI flash chip directly, which is how a Proxmox
+   host exposed `Internal SPI Controller (BIOS)` as updatable. A failed write there
+   costs the motherboard. The Docker image additionally disables `uefi_capsule` in its
+   baked fwupd config, but the application enforces this regardless — an LXC or native
+   install uses the host's fwupd configuration, where those plugins are live.
 
 The design started with an allowlist of plugins that could flash in one click. It was
 wrong twice — most memorably by making a NAS cache pool, the drive Docker runs from,
@@ -96,8 +162,12 @@ required mounts are visible. The usual cause is a missing `/run/udev` mount — 
 enumerates through the udev database and returns an empty list without it, rather
 than an error.
 
+**No devices in an LXC.** Check the udev bind mount landed:
+`pct exec <ctid> -- ls /run/udev/data | head`. An unprivileged LXC cannot enumerate
+firmware at all — the container must be privileged with device access.
+
 **Metadata is stale.** Refresh failures are non-fatal; the device inventory still
-renders. Check that the container can reach `fwupd.org`.
+renders. Check that the host can reach `fwupd.org`.
 
 ## Development
 
@@ -121,6 +191,9 @@ which runs the fwupd engine in-process — so the image needs no DBus broker and
 init system, and stays a single Python process.
 
 ### Why Debian forky, pinned to a snapshot
+
+This section concerns the **Docker image** only. Native and LXC installs use whatever
+fwupd your distribution ships.
 
 The base is `debian:forky-slim` pinned to a `snapshot.debian.org` timestamp. Debian
 stable (trixie) carries fwupd 2.0.20 and `trixie-backports` offers nothing newer, so
@@ -164,6 +237,13 @@ the plugin capable of staging a firmware capsule to the EFI system partition, wh
 on Unraid is the bootable USB stick holding the OS and array configuration. Disabling
 it makes read-only a structural property rather than a convention, and an integration
 test asserts the plugin reports itself disabled.
+
+## Deployment scripts
+
+- [`deploy/install.sh`](deploy/install.sh) — native Debian/Ubuntu install with a systemd unit
+- [`deploy/proxmox-lxc.sh`](deploy/proxmox-lxc.sh) — creates a Proxmox LXC and installs into it
+- [`deploy/systemd/fwupd-webui.service`](deploy/systemd/fwupd-webui.service) — the unit itself
+- [`unraid/fwupd-webui.xml`](unraid/fwupd-webui.xml) — Unraid Community Applications template
 
 ## Design documents
 

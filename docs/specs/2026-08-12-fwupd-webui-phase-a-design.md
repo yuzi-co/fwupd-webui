@@ -147,6 +147,24 @@ one-click path to anything.
 those two would now be constants. A test asserts `RUNTIME_SAFE_PLUGINS` no longer exists, so the
 decision to have no allowlist is guarded rather than only the behaviour it produces.
 
+### System firmware is refused outright
+
+`BLOCKED_PLUGINS` — `uefi_capsule`, `uefi_dbx`, `mtd` — are never flashable, whatever their flags
+say. The first two stage a payload to the EFI system partition. `mtd` writes the SPI flash chip
+directly, reaching the same silicon while bypassing the ESP entirely.
+
+**Amended after deploying to a second machine.** The original block covered only the ESP path,
+because the first deployment target had no `mtd` devices. A Proxmox host exposed
+`Internal SPI Controller (BIOS)` as `updatable`, and policy reported it flashable — so the project's
+founding constraint, that it never writes BIOS, was being enforced on one of two roads to BIOS
+rather than on the destination. 163 tests and a live deployment had not surfaced it; a second class
+of hardware did, in the first ten minutes.
+
+This lives in the application rather than in the image's `fwupd.conf` because that file is a
+property of the Docker image. LXC and bare-metal installs use the host's fwupd configuration, where
+those plugins are live, so an image-level control would have silently vanished on exactly the
+deployment targets added alongside it.
+
 The confirmation is checked **server-side**. The HTML input is a prompt; the server refusing the
 POST is the control.
 

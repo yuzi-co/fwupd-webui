@@ -9,6 +9,10 @@ default behaviour of the container.
 
 ## Problem
 
+**Amended 2026-08-12:** this document is written Unraid-first because that was the original target.
+The project now also runs as a Proxmox LXC, as a native systemd service on Debian and Ubuntu, and as
+a Docker container on any Linux host. The reasoning below still holds; the platform list is wider.
+
 Unraid servers accumulate firmware — NVMe drives, LSI/HBA controllers, network cards, Thunderbolt
 controllers, USB hubs, docks — and their owners have no visibility into what versions are running or
 whether updates exist. Unraid ships no `fwupd`: the OS is Slackware, loaded into RAM from a USB
