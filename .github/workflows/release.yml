@@ -1,31 +1,27 @@
-# Builds and publishes the container image to GHCR.
+# Builds and publishes the container image to GHCR, and cuts a GitHub Release.
 #
-# DELIBERATELY NOT AUTOMATIC. There is no push or tag trigger: nothing publishes
-# until someone runs this by hand from the Actions tab. Until the first run, no
-# image exists at ghcr.io/yuzi-co/fwupd-webui and the README says so.
+# Fires on a version tag:
+#   git tag -a v0.1.0 -m "..." && git push origin v0.1.0
 #
-# To start publishing:
-#   1. Run this workflow once (Actions -> Release -> Run workflow).
-#   2. Make the resulting package public, otherwise pulls need credentials the
-#      Unraid Community Applications template has no field for.
-#   3. Add the tag trigger below and update the README install section.
+# Also runnable by hand from the Actions tab, which is useful for re-publishing
+# an existing tag without moving it.
 #
-# To publish on tags instead, add:
-#   on:
-#     push:
-#       tags: ["v*"]
+# The first run creates the package. GHCR packages start private even on a public
+# repository, so after the first publish set the package visibility to public
+# once, at Packages -> fwupd-webui -> Settings.
 name: Release
 
 on:
+  push:
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag to publish (e.g. v0.1.0)"
+        description: "Version tag to publish (e.g. v0.1.0)"
         required: true
-        default: "v0.1.0"
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -34,21 +30,35 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # inputs.tag is operator-supplied and ends up in the image tag list. Only
-      # collaborators can dispatch this, but a newline in the value would append
-      # tags nobody asked for, so constrain it. Passed via env rather than
-      # interpolated into the script.
-      - name: Validate tag
+      # The tag comes either from the ref that triggered this or from operator
+      # input, and ends up in the image tag list. Constrain it, and pass it
+      # through the environment rather than interpolating into the script.
+      - name: Resolve and validate version
+        id: version
         env:
-          TAG: ${{ inputs.tag }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
+          TAG="${INPUT_TAG:-$REF_NAME}"
           if ! printf '%s' "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
             echo "Refusing tag '$TAG': expected vMAJOR.MINOR.PATCH" >&2
             exit 1
           fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
-      # The image is amd64 only, matching what is tested. fwupd device
-      # enumeration has not been verified on arm64 hardware.
+      # The version in pyproject and the tag being published must agree, or the
+      # container reports a version nobody can correlate with a release.
+      - name: Check pyproject version matches the tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          PYPROJECT="$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)"
+          if [ "$PYPROJECT" != "$VERSION" ]; then
+            echo "pyproject version '$PYPROJECT' does not match tag '$VERSION'" >&2
+            exit 1
+          fi
+
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
@@ -59,9 +69,12 @@ jobs:
 
       # Publishing an image that fails its own integration suite would be worse
       # than publishing nothing, so the suite runs against the built image first.
+      # It performs a real flash of fwupd's synthetic device.
       - name: Integration test against real fwupdtool
         run: ./scripts/integration-test.sh
 
+      # amd64 only, matching what is tested. fwupd device enumeration has not
+      # been verified on arm64 hardware.
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -69,9 +82,28 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ inputs.tag }}
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
             ghcr.io/${{ github.repository }}:latest
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.description=Web UI for fwupd firmware inventory and updates
             org.opencontainers.image.licenses=MIT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          {
+            printf 'Container image:\n\n'
+            printf '    docker pull ghcr.io/%s:%s\n\n' "$REPO" "$TAG"
+            printf 'Read-only by default. Firmware flashing requires setting\n'
+            printf 'FWUPD_WEBUI_ENABLE_FLASHING=true, and even then every flash requires\n'
+            printf 'typing the device name. System firmware (BIOS, UEFI capsule, SPI flash)\n'
+            printf 'is refused outright.\n\n'
+            printf 'Requires --privileged; the README explains why that cannot currently be\n'
+            printf 'narrowed to a capability set.\n'
+          } > /tmp/notes.md
+          gh release create "$TAG" --title "$TAG" --notes-file /tmp/notes.md
