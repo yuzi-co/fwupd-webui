@@ -7,7 +7,7 @@ from fwupd_webui.web.app import create_app
 from test_web_flash import FakeService
 
 
-def service_with(plugin="nvme", name="NVMe SSD", enabled=True):
+def service_with(plugin="logitech_hidpp", name="Unifying Receiver", enabled=True):
     class S(FakeService):
         async def inventory(self):
             device = Device.model_validate(
@@ -44,7 +44,7 @@ def confirm(client, operation="upgrade"):
 
 
 def test_allowlisted_device_gets_a_live_confirm_button():
-    body = confirm(client_for(service_with(plugin="nvme")))
+    body = confirm(client_for(service_with(plugin="logitech_hidpp")))
     assert 'name="confirm_name"' not in body, "an allowlisted device needs no typed override"
     assert "2.0" in body
 
@@ -90,3 +90,16 @@ def test_device_detail_offers_no_flash_controls_when_disabled():
 def test_confirm_route_404s_for_an_unknown_device():
     resp = client_for(service_with()).get("/devices/nope/confirm?version=2.0")
     assert resp.status_code == 404
+
+
+def test_storage_device_gets_the_big_warning():
+    body = confirm(client_for(service_with(plugin="nvme")))
+    assert 'class="danger"' in body
+    assert "storage device" in body.lower()
+    assert 'name="confirm_name"' in body, "storage always needs the typed name"
+
+
+def test_peripheral_gets_no_storage_warning():
+    body = confirm(client_for(service_with(plugin="logitech_hidpp")))
+    assert 'class="danger"' not in body
+    assert 'name="confirm_name"' not in body

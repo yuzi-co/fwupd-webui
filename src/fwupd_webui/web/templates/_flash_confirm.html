@@ -2,6 +2,15 @@
   <h3>{{ operation | capitalize }} {{ view.device.display_name }}</h3>
   <p>{{ view.device.version or "unknown" }} &rarr; <strong>{{ version }}</strong></p>
 
+  {% if permission.is_storage %}
+  <p class="danger">
+    <strong>This is a storage device.</strong>
+    Firmware is about to be rewritten on hardware that may be holding data right now.
+    A failed write can take the data with it, not just the drive.
+    Stop the array or unmount this device before continuing.
+  </p>
+  {% endif %}
+
   {% if "needs-reboot" in view.device.flags %}
   <p class="warn">
     This device reports <code>needs-reboot</code>: the firmware will be staged and
