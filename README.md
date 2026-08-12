@@ -125,8 +125,9 @@ test asserts the plugin reports itself disabled.
 
 ## Design documents
 
-- [Design spec](docs/superpowers/specs/2026-08-11-fwupd-webui-design.md)
-- [Phase C implementation plan](docs/superpowers/plans/2026-08-11-fwupd-webui-phase-c.md)
+- [Phase C design — read-only inventory](docs/specs/2026-08-11-fwupd-webui-design.md)
+- [Phase C implementation plan](docs/plans/2026-08-11-fwupd-webui-phase-c.md)
+- [Phase A design — flashing](docs/specs/2026-08-12-fwupd-webui-phase-a-design.md)
 
 ## License
 

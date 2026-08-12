@@ -1,6 +1,5 @@
 # fwupd Web UI — Phase C Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship a Docker container that serves a read-only web UI listing every firmware device `fwupd` can see on an Unraid host, annotated with available LVFS updates.
 
@@ -8,7 +7,7 @@
 
 **Tech Stack:** Python 3.13, FastAPI, uvicorn, Jinja2, pydantic v2, htmx (vendored), pytest, ruff, uv, Docker on `debian:trixie-slim`.
 
-**Spec:** `docs/superpowers/specs/2026-08-11-fwupd-webui-design.md`
+**Spec:** `docs/specs/2026-08-11-fwupd-webui-design.md`
 
 ## Global Constraints
 
