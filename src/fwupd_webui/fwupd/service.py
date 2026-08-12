@@ -9,7 +9,9 @@ from pathlib import Path
 
 from fwupd_webui.config import Config
 from fwupd_webui.fwupd.cli import FwupdCli, FwupdError
+from fwupd_webui.fwupd.flash import FlashJob, FlashManager, FlashStatus
 from fwupd_webui.fwupd.models import Device, Release
+from fwupd_webui.fwupd.policy import Permission, check_override, evaluate
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +64,7 @@ class FwupdService:
         self._state_dir = Path(state_dir)
         self._clock = clock
         self._lock = asyncio.Lock()
+        self.flash_manager = FlashManager(cli)
 
     async def _call(self, fn, *args):
         async with self._lock:
@@ -132,3 +135,78 @@ class FwupdService:
         if not status.stale:
             return status
         return await self.refresh()
+
+    @property
+    def flashing_enabled(self) -> bool:
+        return self._config.enable_flashing
+
+    def permission_for(self, device: Device) -> Permission:
+        return evaluate(device, enabled=self._config.enable_flashing)
+
+    async def start_flash(
+        self,
+        device_id: str,
+        version: str,
+        *,
+        operation: str,
+        typed_name: str | None,
+    ) -> FlashJob:
+        """Validate policy, then run the flash under the hardware lock.
+
+        Policy is enforced here rather than in the route, so it holds whatever
+        the HTML offered. Raises PermissionError when policy refuses,
+        LookupError when the device or release does not exist.
+        """
+        devices = await self._call(self._cli.get_devices)
+        device = next((d for d in devices if d.device_id == device_id), None)
+        if device is None:
+            raise LookupError(f"no such device: {device_id}")
+
+        permission = self.permission_for(device)
+        if not permission.allowed:
+            if not permission.needs_override:
+                raise PermissionError(permission.reason)
+            if not check_override(device, typed_name):
+                raise PermissionError(
+                    f"{permission.reason} Expected exactly: {device.display_name}"
+                )
+
+        release = next((r for r in device.releases if r.version == version), None)
+        if release is None:
+            raise LookupError(f"device {device_id} has no release {version}")
+        if not release.uri:
+            raise LookupError(f"release {version} has no download URI")
+
+        async with self._lock:
+            job = await self.flash_manager.start(
+                release.uri,
+                device_id,
+                device_name=device.display_name,
+                version=version,
+                allow_older=operation == "downgrade",
+                allow_reinstall=operation == "reinstall",
+            )
+            if job.status is FlashStatus.SUCCEEDED:
+                await self._record_outcome(job, device_id, version)
+            return job
+
+    async def _record_outcome(self, job: FlashJob, device_id: str, version: str) -> None:
+        """Re-enumerate once so the result view can say whether the firmware is
+        live or merely staged.
+
+        Uses asyncio.to_thread directly rather than self._call: we already hold
+        the lock, and self._call would try to acquire it again and deadlock.
+
+        Best-effort -- a failure here must not turn a successful flash into a
+        reported failure.
+        """
+        try:
+            devices = await asyncio.to_thread(self._cli.get_devices)
+        except FwupdError:
+            log.warning("post-flash re-enumeration failed", exc_info=True)
+            return
+        fresh = next((d for d in devices if d.device_id == device_id), None)
+        if fresh is None:
+            return
+        job.installed_version = fresh.version
+        job.staged = fresh.version != version
