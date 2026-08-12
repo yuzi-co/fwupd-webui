@@ -1,4 +1,3 @@
-import inspect
 import json
 import subprocess
 from pathlib import Path
@@ -154,11 +153,3 @@ def test_refresh_passes_force(monkeypatch):
     stub_run(monkeypatch, FakeCompleted(0, stdout="{}"), capture)
     FwupdCli().refresh()
     assert capture["argv"] == ["fwupdtool", "--json", "refresh", "--force"]
-
-
-def test_no_install_verb_exists():
-    """Phase C is read-only. Guard against an install path being added by accident."""
-    import fwupd_webui.fwupd.cli as cli_module
-
-    text = Path(inspect.getsourcefile(cli_module)).read_text()
-    assert '"install"' not in text

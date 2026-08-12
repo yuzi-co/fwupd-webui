@@ -18,8 +18,16 @@ def main() -> None:
     config = Config.from_env()
     logging.basicConfig(level=config.log_level.upper())
 
-    cli = FwupdCli(timeout=config.timeout_seconds)
+    cli = FwupdCli(
+        timeout=config.timeout_seconds,
+        install_timeout=config.install_timeout_seconds,
+    )
     service = FwupdService(cli, config, STATE_DIR)
+
+    if config.enable_flashing:
+        logging.getLogger(__name__).warning(
+            "flashing is ENABLED: this instance can write firmware to devices"
+        )
 
     # A refresh failure at boot must never stop the UI from coming up; the
     # inventory is useful without update metadata.

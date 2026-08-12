@@ -36,4 +36,14 @@ def create_app(service, config: Config) -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
     app.include_router(router)
+
+    if config.enable_flashing:
+        # Registered only when explicitly enabled, so POST /flash is a genuine
+        # 404 otherwise rather than a handler that decided to refuse. Same
+        # reasoning as disabling the uefi_capsule plugin outright: a capability
+        # that does not exist cannot be reached by a mistake above it.
+        from fwupd_webui.web.flash_routes import flash_router
+
+        app.include_router(flash_router)
+
     return app

@@ -1,0 +1,36 @@
+<div id="flash-progress"
+     {% if not job.finished %}hx-get="/flash/progress" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+  {% if not job.finished %}
+    <p class="phase"><strong>{{ job.phase or "Starting" }}</strong> {{ job.percent }}%</p>
+    <p class="warn">Do not power off the machine.</p>
+  {% elif job.status.value == "succeeded" %}
+    <p class="ok">Flashed {{ job.device_name }} to {{ job.version }}.</p>
+    {% if job.staged %}
+    <p class="warn">
+      The device still reports version <code>{{ job.installed_version or "unknown" }}</code>,
+      so the new firmware is <strong>staged but not yet live</strong>. It takes effect
+      after a reboot. This tool never reboots the host &mdash; do that from the Unraid
+      UI, stopping the array first.
+    </p>
+    {% elif job.staged is sameas false %}
+    <p class="muted">The device now reports {{ job.installed_version }}. The update is live.</p>
+    {% else %}
+    <p class="muted">
+      Could not re-read the device to confirm whether the firmware is live or staged.
+    </p>
+    {% endif %}
+  {% else %}
+    <p class="error">
+      Flash failed during <strong>{{ job.phase or "startup" }}</strong>
+      {% if job.exit_code is not none %}(exit {{ job.exit_code }}){% endif %}.
+    </p>
+    <pre class="log">{{ job.error }}</pre>
+    {% if job.log %}<pre class="log">{{ job.log | join("\n") }}</pre>{% endif %}
+  {% endif %}
+
+  {% if job.finished %}
+  <form method="post" action="/flash/dismiss">
+    <button type="submit">Back to devices</button>
+  </form>
+  {% endif %}
+</div>

@@ -17,6 +17,9 @@ services:
       - fwupd-metadata:/var/lib/fwupd
     environment:
       FWUPD_WEBUI_LOG_LEVEL: info
+      # Read-only by default. Set to "true" to enable the firmware write path;
+      # while false the flash routes are not registered at all.
+      FWUPD_WEBUI_ENABLE_FLASHING: "false"
     restart: unless-stopped
 
 volumes:

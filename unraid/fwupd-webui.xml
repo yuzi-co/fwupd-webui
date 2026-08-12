@@ -47,4 +47,12 @@
   <Config Name="LVFS remote" Target="FWUPD_WEBUI_LVFS_REMOTE" Default="lvfs"
           Description="lvfs or lvfs-testing" Type="Variable" Display="advanced"
           Required="false" Mask="false">lvfs</Config>
+
+  <Config Name="Enable flashing" Target="FWUPD_WEBUI_ENABLE_FLASHING" Default="false"
+          Description="Set to true to allow writing firmware to devices. Leave false for a read-only inventory. Enabling this permits irreversible writes to hardware. NVMe and Thunderbolt devices update directly; everything else, including array drives, requires typing the device name to confirm. Stop the array before flashing any drive."
+          Type="Variable" Display="always" Required="false" Mask="false">false</Config>
+
+  <Config Name="Flash timeout (seconds)" Target="FWUPD_WEBUI_INSTALL_TIMEOUT_SECONDS"
+          Default="1800" Description="Hard timeout for a single firmware write"
+          Type="Variable" Display="advanced" Required="false" Mask="false">1800</Config>
 </Container>

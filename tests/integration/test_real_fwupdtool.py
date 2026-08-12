@@ -60,3 +60,36 @@ def test_capsule_plugin_is_disabled():
     )
     plugins = {p["Name"]: p.get("Flags", []) for p in json.loads(proc.stdout)["Plugins"]}
     assert "disabled" in plugins["uefi_capsule"]
+
+
+def test_real_install_reports_the_expected_phases():
+    """Fixtures cannot catch fwupd renaming or reformatting its progress
+    phases. This can: it performs an actual install inside the image."""
+    import subprocess
+
+    from fwupd_webui.fwupd.cli import FwupdCli
+
+    subprocess.run(["fwupdtool", "enable-test-devices"], capture_output=True, check=False)
+
+    devices = FwupdCli().get_devices()
+    target = next(d for d in devices if d.plugin == "test")
+
+    phases: list[str] = []
+    FwupdCli().install(
+        "/usr/share/installed-tests/fwupd/fakedevice124.cab",
+        target.device_id,
+        allow_reinstall=True,
+        on_progress=lambda p: phases.append(p.phase),
+    )
+
+    assert phases, "install produced no parseable progress at all"
+    assert "Writing" in phases, f"no Writing phase in {sorted(set(phases))}"
+    assert "Verifying" in phases, f"no Verifying phase in {sorted(set(phases))}"
+
+
+def test_install_argv_never_carries_force():
+    import inspect
+
+    from fwupd_webui.fwupd.cli import FwupdCli
+
+    assert "--force" not in inspect.getsource(FwupdCli.install)

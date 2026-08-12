@@ -20,10 +20,24 @@
       {% if release.summary %}<div>{{ release.summary }}</div>{% endif %}
       {% if release.description %}<div class="changelog">{{ release.description }}</div>{% endif %}
       {% if release.uri %}<div><a href="{{ release.uri }}" rel="noreferrer">{{ release.uri }}</a></div>{% endif %}
+      {% if inventory.flashing_enabled %}
+      <div class="flash-actions">
+        {% for op in ["upgrade", "downgrade", "reinstall"] %}
+        <button hx-get="/devices/{{ view.device.device_id }}/confirm?version={{ release.version }}&amp;operation={{ op }}"
+                hx-target="closest li" hx-swap="beforeend">{{ op | capitalize }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
     </li>
     {% endfor %}
   </ul>
   {% else %}
   <p class="muted">No releases available for this device.</p>
+  {% endif %}
+
+  {% if not inventory.flashing_enabled %}
+  <p class="muted">
+    Flashing is disabled. Set <code>FWUPD_WEBUI_ENABLE_FLASHING=true</code> to enable it.
+  </p>
   {% endif %}
 </div>

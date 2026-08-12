@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Flashing {{ job.device_name }}{% endblock %}
+{% block content %}
+<h2>Flashing {{ job.device_name }} &rarr; {{ job.version }}</h2>
+{% include "_flash_progress.html" %}
+{% endblock %}
