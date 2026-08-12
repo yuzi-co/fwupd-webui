@@ -18,7 +18,7 @@
       <strong>{{ release.version }}</strong>
       {% if release.urgency %}<span class="badge">{{ release.urgency }}</span>{% endif %}
       {% if release.summary %}<div>{{ release.summary }}</div>{% endif %}
-      {% if release.description %}<div class="changelog">{{ release.description }}</div>{% endif %}
+      {% if release.description %}<div class="changelog">{{ release.description | plain_text }}</div>{% endif %}
       {% if release.uri %}<div><a href="{{ release.uri }}" rel="noreferrer">{{ release.uri }}</a></div>{% endif %}
       {% if inventory.flashing_enabled %}
       <div class="flash-actions">

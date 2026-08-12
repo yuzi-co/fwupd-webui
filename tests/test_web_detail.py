@@ -84,11 +84,15 @@ def test_detail_links_to_the_release_uri(client):
     assert "https://fwupd.org/downloads/abc.cab" in client.get("/devices/nvme-1").text
 
 
-def test_detail_escapes_release_description_html(client):
-    """fwupd descriptions carry markup from LVFS; it must not be injected raw."""
+def test_detail_renders_release_description_as_readable_text(client):
+    """fwupd descriptions carry XHTML from LVFS. It must not be injected raw,
+    and it must not be shown to the user as literal tags either -- escaping
+    alone put '<p>Fixes an issue...</p>' on screen, tags and all."""
     body = client.get("/devices/nvme-1").text
-    assert "<p>Fixes an issue" not in body
-    assert "&lt;p&gt;Fixes an issue" in body
+
+    assert "<p>Fixes an issue" not in body, "vendor markup must not be injected"
+    assert "&lt;p&gt;" not in body, "tags must not be visible to the user"
+    assert "Fixes an issue" in body, "the text itself must survive"
 
 
 def test_detail_for_device_without_releases(client):

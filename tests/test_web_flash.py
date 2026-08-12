@@ -109,16 +109,26 @@ def test_post_flash_passes_the_typed_override():
     assert service.started[0][3] == "ST4000VN008-2DR166"
 
 
-def test_refused_flash_renders_the_banner_not_a_500():
+def test_refused_flash_renders_a_full_page_not_a_bare_fragment():
+    """The confirm step is a plain form POST, so the browser navigates. A
+    fragment response left the user on a blank white page with one unstyled
+    line and no way back -- on the most likely error path there is."""
+
     class Refusing(FakeService):
         async def start_flash(self, *a, **k):
             raise PermissionError("type the device name exactly")
 
+        async def cached_inventory(self, max_age_seconds=None):
+            return await self.inventory()
+
     resp = client_for(Refusing()).post(
         "/flash", data={"device_id": "dev-1", "version": "2.0", "operation": "upgrade"}
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 400
     assert "type the device name exactly" in resp.text
+    assert "<html" in resp.text.lower(), "must be a full page"
+    assert "/static/app.css" in resp.text, "must carry the stylesheet"
+    assert 'href="/"' in resp.text, "must offer a way back"
 
 
 def test_index_redirects_to_progress_while_a_flash_runs():
