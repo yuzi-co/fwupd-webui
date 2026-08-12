@@ -22,10 +22,27 @@ Firmware inventory and updates for your server. Lists every device fwupd can see
     and SCSI ioctls, which an unprivileged container cannot do — without it you will
     see only the CPU and display.
   </Overview>
-  <TemplateURL>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/unraid/fwupd-webui.xml</TemplateURL>
-  <Category>Tools: Utilities:</Category>
+  <TemplateURL>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/templates/fwupd-webui.xml</TemplateURL>
+  <Category>Tools:System Tools:Utilities</Category>
   <WebUI>http://[IP]:[PORT:8099]/</WebUI>
-  <Icon>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/unraid/icon.png</Icon>
+  <Icon>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/icon.png</Icon>
+  <Shell>bash</Shell>
+  <ReadMe>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/README.md</ReadMe>
+  <License>MIT</License>
+  <ExtraSearchTerms>fwupd firmware lvfs bios nvme ssd hba thunderbolt update</ExtraSearchTerms>
+  <Requires>Privileged mode and host access to /sys, /dev and /run/udev. Internet access for LVFS metadata.</Requires>
+  <Changes>
+### 0.1.1
+Show the application version in the UI header and in /api/status.
+
+### 0.1.0
+First release. Firmware inventory with optional flashing, off by default.
+  </Changes>
+  <Date>2026-08-12</Date>
+  <MinVer>6.9</MinVer>
+  <Screenshot>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/docs/screenshots/inventory.png</Screenshot>
+  <Screenshot>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/docs/screenshots/device-detail.png</Screenshot>
+  <Screenshot>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/docs/screenshots/confirm.png</Screenshot>
 
   <Config Name="WebUI Port" Target="8099" Default="8099" Mode="tcp"
           Description="Port for the web interface" Type="Port" Display="always"

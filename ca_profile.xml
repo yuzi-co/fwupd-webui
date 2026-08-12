@@ -1,0 +1,21 @@
+<CommunityApplications>
+  <Profile>
+Firmware tooling for Unraid.
+
+**fwupd-webui** puts a web UI on [fwupd](https://fwupd.org): it lists every device fwupd
+can enumerate on the server — NVMe drives, SATA disks, HBAs, network cards, Thunderbolt
+controllers, docks — with current firmware versions and any updates available from LVFS.
+
+Unraid ships no fwupd and has no persistent package manager, so a container is the only
+practical way to get this on the platform.
+
+It is read-only by default. Firmware flashing is disabled unless explicitly enabled, and
+even then every flash requires typing the device name to confirm, storage devices carry a
+data-loss warning, and system firmware (BIOS, UEFI capsule, SPI flash) is refused
+outright.
+
+Support is via GitHub issues.
+  </Profile>
+  <Icon>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/icon.svg</Icon>
+  <WebPage>https://github.com/yuzi-co/fwupd-webui</WebPage>
+</CommunityApplications>

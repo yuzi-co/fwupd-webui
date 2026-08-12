@@ -12,7 +12,7 @@
   "repository": "https://github.com/yuzi-co/fwupd-webui",
   "architectures": ["amd64"],
   "platforms": ["pve"],
-  "logo": "https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/unraid/icon.png",
+  "logo": "https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/icon.png",
   "description": "Web UI for fwupd. Lists every device fwupd can enumerate on the Proxmox host - NVMe drives, SATA disks, HBAs, network cards, Thunderbolt controllers - with current firmware versions and any updates available from LVFS. Read-only by default; firmware flashing is off unless explicitly enabled.",
   "install_methods": [
     {

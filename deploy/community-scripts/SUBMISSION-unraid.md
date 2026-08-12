@@ -1,9 +1,24 @@
 # Unraid Community Applications — submission draft
 
 CA does not host templates. It indexes template *repositories* and scrapes the XML from
-them, so nothing needs moving: `unraid/fwupd-webui.xml` stays where it is and the
-repository is what gets registered. Once listed, CA picks up every template in the repo
-automatically and re-scrapes on a schedule.
+them, so the repository itself is what gets registered.
+
+**The repository layout now follows
+[unraid/unraid-community-apps-starter](https://github.com/unraid/unraid-community-apps-starter),
+the official starter template:**
+
+```
+ca_profile.xml               repository profile shown in CA  (must be at the root)
+icon.svg                     repository icon, referenced by ca_profile.xml
+icon.png                     application icon, referenced by the template
+templates/fwupd-webui.xml    one XML per Docker app
+LICENSE                      OSI-approved licence is required before submitting
+```
+
+**Submission is now a self-service flow, not only a forum post.** The starter README ends
+with: *"Run Validate and Scan in the Community Apps submit flow: `/submit`."* Use that
+first — the forum route below is the older path and the fallback if the flow rejects
+something you cannot explain.
 
 ## Where to go
 
@@ -55,7 +70,7 @@ Post this from your own forum account:
 Hi, could I have the following repository added to Community Applications?
 
 **Repository:** https://github.com/yuzi-co/fwupd-webui
-**Template:** `unraid/fwupd-webui.xml`
+**Template:** `templates/fwupd-webui.xml`
 **Container:** `ghcr.io/yuzi-co/fwupd-webui` (public, amd64)
 
 **What it does.** fwupd-webui is a web UI for [fwupd](https://fwupd.org). It lists every
@@ -104,7 +119,7 @@ Happy to adjust the template if anything in it does not meet CA conventions.
 ## Checklist before posting
 
 - [ ] The GHCR package is public — verified by pulling anonymously with `docker logout`.
-- [ ] `unraid/icon.png` resolves over raw.githubusercontent.
+- [ ] `icon.png` resolves over raw.githubusercontent.
 - [ ] The template's `Overview`, `Support`, `Project`, `Icon`, `Category` and `WebUI`
       fields are populated and accurate.
 - [ ] `Privileged` is declared `true` in the template rather than left implicit.

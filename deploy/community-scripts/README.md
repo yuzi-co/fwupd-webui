@@ -79,7 +79,7 @@ accept a project before writing anything for it.
 ## Unraid — Community Applications
 
 CA does not host templates. It indexes template repositories and scrapes the XML from
-them, so `unraid/fwupd-webui.xml` stays where it is and the repository is what gets
+them, so `templates/fwupd-webui.xml` stays where it is and the repository is what gets
 registered.
 
 Registration is a request to the CA maintainers rather than a pull request; the entry

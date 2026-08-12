@@ -54,7 +54,7 @@ rather choose when the firmware tooling under you changes:
 
 ### Unraid
 
-The template at [`unraid/fwupd-webui.xml`](unraid/fwupd-webui.xml) sets up the mounts,
+The template at [`templates/fwupd-webui.xml`](templates/fwupd-webui.xml) sets up the mounts,
 the port and the flashing toggle. Add it as a template, or point Community Applications
 at this repository.
 
@@ -348,7 +348,7 @@ test asserts the plugin reports itself disabled.
 - [`deploy/install.sh`](deploy/install.sh) — native Debian/Ubuntu install with a systemd unit
 - [`deploy/proxmox-lxc.sh`](deploy/proxmox-lxc.sh) — creates a Proxmox LXC and installs into it
 - [`deploy/systemd/fwupd-webui.service`](deploy/systemd/fwupd-webui.service) — the unit itself
-- [`unraid/fwupd-webui.xml`](unraid/fwupd-webui.xml) — Unraid Community Applications template
+- [`templates/fwupd-webui.xml`](templates/fwupd-webui.xml) — Unraid Community Applications template
 - [`.github/workflows/release.yml`](.github/workflows/release.yml) — GHCR publish, manual dispatch only
 
 ## Design documents
