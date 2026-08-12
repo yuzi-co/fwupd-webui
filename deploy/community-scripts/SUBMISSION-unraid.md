@@ -5,8 +5,46 @@ them, so nothing needs moving: `unraid/fwupd-webui.xml` stays where it is and th
 repository is what gets registered. Once listed, CA picks up every template in the repo
 automatically and re-scrapes on a schedule.
 
-Registration is a request to the CA maintainers, posted in the **Community Applications
-support thread on the Unraid forums** (forums.unraid.net). It is not a pull request.
+## Where to go
+
+Verified by following CA's own links rather than from memory:
+
+| What | Where |
+| --- | --- |
+| **Submission instructions** | https://forums.unraid.net/topic/57181-docker-faq/#comment-566084 |
+| CA support thread | https://forums.unraid.net/topic/38582-plug-in-community-applications |
+| Application policies (locked) | https://forums.unraid.net/topic/87144-ca-application-policies-notes/ |
+
+The first link is the authoritative one: the policies thread ends with *"To get your apps
+added to CA, see HERE"* and points there. Read it before posting — its body is rendered
+client-side and could not be extracted here, so treat the procedure below as the shape of
+the request rather than the exact steps.
+
+## Policy requirements that apply to this app
+
+From the policies thread, the ones worth checking before submitting:
+
+- **Open source** — required for author-created applications. MIT. ✅
+- **2FA must be enabled** on the GitHub repository, with an acknowledgement given to the
+  CA authors/maintainers or Limetech. **Verify this on the `yuzi-co` account before
+  posting** — it is a stated requirement, not a nicety.
+- **No referral or affiliate links** in Project/Support URLs. ✅
+- **A reasonable description** is a minimum standard; templates failing it are removed
+  automatically. ✅
+- **"Proof of concept" applications are generally not accepted**, and if accepted must
+  say so in the description. This project is new, so a moderator may reasonably raise it.
+- **Data-loss bugs attract severe moderation, up to blacklisting the whole repository**,
+  and moderators explicitly err on the side of users over authors. That is the single
+  most relevant policy here: this application can write firmware. The read-only default
+  and the confirmation model are worth stating prominently, which the draft below does.
+- **Duplicate of an existing container** is refused. No equivalent exists in CA. ✅
+
+One practical note: CA sources download statistics from Docker Hub. This image is
+GHCR-only, so the listing will show no download counts. Not a blocker, just expected.
+
+## The post
+
+Registration is a request to the CA maintainers on the forums, not a pull request.
 
 Post this from your own forum account:
 
