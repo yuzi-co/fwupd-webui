@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import subprocess
+from dataclasses import dataclass
 
 from fwupd_webui.fwupd.models import Device, parse_devices
 
@@ -10,6 +12,7 @@ log = logging.getLogger(__name__)
 
 _STDERR_TAIL_CHARS = 2000
 _RAW_SNIPPET_CHARS = 500
+_LOG_TAIL_LINES = 50
 
 # FwupdError code 9, NOTHING_TO_DO. `refresh` reports it with a non-zero exit
 # when the cached metadata is already current, which is a success condition.
@@ -41,6 +44,42 @@ class FwupdOutputInvalid(FwupdError):
     def __init__(self, raw: str):
         self.raw = raw
         super().__init__(f"fwupdtool produced unparseable output: {raw[:_RAW_SNIPPET_CHARS]!r}")
+
+
+# fwupdtool colours some stderr output even when stderr is not a TTY.
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+# Progress arrives as "Writing…: 42.3%". The phase may contain spaces
+# ("Restarting device"). The trailing ellipsis is fwupd's, not ours. A bare
+# "Loading…" with no percentage is emitted before the numbers start and must
+# not parse.
+_PROGRESS_RE = re.compile(r"^(?P<phase>[^:]+?)\s*[….]*\s*:\s*(?P<percent>\d+(?:\.\d+)?)%$")
+
+
+@dataclass(frozen=True)
+class ProgressLine:
+    phase: str
+    percent: float
+
+
+def parse_progress_line(line: str) -> ProgressLine | None:
+    """Parse one stderr line from `fwupdtool install`.
+
+    Returns None for anything that is not a progress report -- warnings, engine
+    log chatter, blank lines. Callers route those to a log tail rather than
+    failing, so a fwupd format change degrades the progress display instead of
+    breaking the flash.
+    """
+    cleaned = _ANSI_RE.sub("", line).strip()
+    if not cleaned:
+        return None
+    match = _PROGRESS_RE.match(cleaned)
+    if not match:
+        return None
+    percent = float(match.group("percent"))
+    if not 0.0 <= percent <= 100.0:
+        return None
+    return ProgressLine(phase=match.group("phase").strip(), percent=percent)
 
 
 class FwupdCli:
