@@ -43,13 +43,15 @@ def confirm(client, operation="upgrade"):
     return client.get(f"/devices/dev-1/confirm?version=2.0&operation={operation}").text
 
 
-def test_allowlisted_device_gets_a_live_confirm_button():
-    body = confirm(client_for(service_with(plugin="logitech_hidpp")))
-    assert 'name="confirm_name"' not in body, "an allowlisted device needs no typed override"
-    assert "2.0" in body
+def test_every_device_gets_the_typed_name_input():
+    """One rule: nothing flashes without typing the name."""
+    for plugin in ("logitech_hidpp", "thunderbolt", "nvme", "ata"):
+        body = confirm(client_for(service_with(plugin=plugin)))
+        assert 'name="confirm_name"' in body, plugin
+        assert "2.0" in body
 
 
-def test_blocked_device_requires_typing_the_name():
+def test_confirm_names_the_exact_string_to_type():
     body = confirm(client_for(service_with(plugin="ata", name="ST4000VN008-2DR166")))
     assert 'name="confirm_name"' in body
     assert "ST4000VN008-2DR166" in body
@@ -100,6 +102,8 @@ def test_storage_device_gets_the_big_warning():
 
 
 def test_peripheral_gets_no_storage_warning():
+    """The red banner must stay specific to storage, or it stops meaning
+    anything on the devices that need it."""
     body = confirm(client_for(service_with(plugin="logitech_hidpp")))
     assert 'class="danger"' not in body
-    assert 'name="confirm_name"' not in body
+    assert 'name="confirm_name"' in body, "still typed, just not a data hazard"

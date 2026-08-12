@@ -21,18 +21,15 @@
   <p class="warn">This device requires AC power for the duration of the update.</p>
   {% endif %}
 
-  {% if permission.allowed or permission.needs_override %}
+  {% if permission.flashable %}
   <form method="post" action="/flash">
     <input type="hidden" name="device_id" value="{{ view.device.device_id }}">
     <input type="hidden" name="version" value="{{ version }}">
     <input type="hidden" name="operation" value="{{ operation }}">
-    {% if permission.needs_override %}
-    <p class="warn">{{ permission.reason }}</p>
     <label>
       Type <code>{{ view.device.display_name }}</code> to confirm:
       <input type="text" name="confirm_name" autocomplete="off" required>
     </label>
-    {% endif %}
     <button type="submit">Flash firmware</button>
   </form>
   {% else %}

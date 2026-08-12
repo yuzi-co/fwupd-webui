@@ -165,13 +165,14 @@ class FwupdService:
             raise LookupError(f"no such device: {device_id}")
 
         permission = self.permission_for(device)
-        if not permission.allowed:
-            if not permission.needs_override:
-                raise PermissionError(permission.reason)
-            if not check_override(device, typed_name):
-                raise PermissionError(
-                    f"{permission.reason} Expected exactly: {device.display_name}"
-                )
+        if not permission.flashable:
+            raise PermissionError(permission.reason)
+        # Every flash needs the typed name, storage or not. Enforced here rather
+        # than in the route, so it holds regardless of what the HTML offered.
+        if not check_override(device, typed_name):
+            raise PermissionError(
+                f"Type the device name exactly to confirm. Expected: {device.display_name}"
+            )
 
         release = next((r for r in device.releases if r.version == version), None)
         if release is None:

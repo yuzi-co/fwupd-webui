@@ -6,6 +6,8 @@ from fwupd_webui.fwupd.flash import FlashStatus
 from fwupd_webui.fwupd.models import Device
 from fwupd_webui.fwupd.service import FwupdService
 
+NAME = "Unifying Receiver"
+
 
 def make_device(plugin="logitech_hidpp", name="Unifying Receiver", version="1.0"):
     return Device.model_validate(
@@ -58,9 +60,9 @@ def service(tmp_path, *, enabled=True, plugin="logitech_hidpp"):
     return svc
 
 
-async def test_flashing_an_allowlisted_device_succeeds(tmp_path):
+async def test_flashing_with_the_typed_name_succeeds(tmp_path):
     svc = service(tmp_path)
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=None)
+    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
 
     assert job.status is FlashStatus.SUCCEEDED
     assert svc._stub_cli.installs == [("https://lvfs/f.cab", "dev-1", False, False)]
@@ -69,56 +71,58 @@ async def test_flashing_an_allowlisted_device_succeeds(tmp_path):
 async def test_flashing_is_refused_when_disabled(tmp_path):
     svc = service(tmp_path, enabled=False)
     with pytest.raises(PermissionError, match="FWUPD_WEBUI_ENABLE_FLASHING"):
-        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=None)
+        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
 
 
-async def test_blocked_plugin_is_refused_without_the_typed_name(tmp_path):
+async def test_every_device_is_refused_without_the_typed_name(tmp_path):
+    """No device flashes without confirmation, storage or not."""
+    for plugin in ("logitech_hidpp", "ata", "nvme"):
+        svc = service(tmp_path, plugin=plugin)
+        with pytest.raises(PermissionError, match="Type the device name"):
+            await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=None)
+
+
+async def test_storage_device_proceeds_with_the_correct_typed_name(tmp_path):
     svc = service(tmp_path, plugin="ata")
-    with pytest.raises(PermissionError, match="typing the device name"):
-        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=None)
-
-
-async def test_blocked_plugin_proceeds_with_the_correct_typed_name(tmp_path):
-    svc = service(tmp_path, plugin="ata")
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name="Unifying Receiver")
+    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
     assert job.status is FlashStatus.SUCCEEDED
 
 
-async def test_blocked_plugin_is_refused_on_a_near_miss(tmp_path):
+async def test_a_near_miss_name_is_refused(tmp_path):
     svc = service(tmp_path, plugin="ata")
     with pytest.raises(PermissionError):
-        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name="NVMe")
+        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name="Unifying")
 
 
 async def test_downgrade_sets_allow_older(tmp_path):
     svc = service(tmp_path)
-    await svc.start_flash("dev-1", "2.0", operation="downgrade", typed_name=None)
+    await svc.start_flash("dev-1", "2.0", operation="downgrade", typed_name=NAME)
     assert svc._stub_cli.installs[0][2] is True
 
 
 async def test_reinstall_sets_allow_reinstall(tmp_path):
     svc = service(tmp_path)
-    await svc.start_flash("dev-1", "2.0", operation="reinstall", typed_name=None)
+    await svc.start_flash("dev-1", "2.0", operation="reinstall", typed_name=NAME)
     assert svc._stub_cli.installs[0][3] is True
 
 
 async def test_unknown_device_is_rejected(tmp_path):
     svc = service(tmp_path)
     with pytest.raises(LookupError):
-        await svc.start_flash("nope", "2.0", operation="upgrade", typed_name=None)
+        await svc.start_flash("nope", "2.0", operation="upgrade", typed_name=NAME)
 
 
 async def test_unknown_version_is_rejected(tmp_path):
     svc = service(tmp_path)
     with pytest.raises(LookupError, match="9.9"):
-        await svc.start_flash("dev-1", "9.9", operation="upgrade", typed_name=None)
+        await svc.start_flash("dev-1", "9.9", operation="upgrade", typed_name=NAME)
 
 
 async def test_staged_firmware_is_detected(tmp_path):
     """The stub device still reports its old version after the flash, which is
     what every needs-reboot device on the deployed host does."""
     svc = service(tmp_path)
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=None)
+    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
     assert job.staged is True
     assert job.installed_version == "1.0"
 
@@ -131,7 +135,7 @@ async def test_a_live_update_is_reported_as_live(tmp_path):
         cli._devices = [make_device(version="2.0")]
 
     cli.get_devices_after_flash = bump_version
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=None)
+    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
     assert job.staged is False
     assert job.installed_version == "2.0"
 
@@ -145,7 +149,7 @@ async def test_a_failed_re_enumeration_does_not_fail_the_flash(tmp_path):
         raise FwupdCommandFailed(1, "enumeration broke")
 
     svc._stub_cli.get_devices_after_flash = boom
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=None)
+    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
 
     assert job.status is FlashStatus.SUCCEEDED
     assert job.staged is None
@@ -159,7 +163,7 @@ async def test_start_flash_does_not_deadlock_on_the_service_lock(tmp_path):
 
     svc = service(tmp_path)
     job = await asyncio.wait_for(
-        svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=None),
+        svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME),
         timeout=5,
     )
     assert job.status is FlashStatus.SUCCEEDED
@@ -168,6 +172,6 @@ async def test_start_flash_does_not_deadlock_on_the_service_lock(tmp_path):
 async def test_the_lock_is_released_after_a_flash(tmp_path):
     """A flash must not leave the lock held, or every later page would hang."""
     svc = service(tmp_path)
-    await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=None)
+    await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
     inventory = await svc.inventory()
     assert len(inventory.devices) == 1
