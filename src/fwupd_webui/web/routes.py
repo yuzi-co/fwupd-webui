@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from fwupd_webui.fwupd.cli import FwupdError
 from fwupd_webui.fwupd.diagnostics import check_mounts
+from fwupd_webui.fwupd.policy import confirmation_phrase
 from fwupd_webui.fwupd.service import Inventory, MetadataStatus
 
 router = APIRouter()
@@ -108,6 +109,7 @@ async def flash_confirm(
                     "version": version,
                     "operation": operation,
                     "permission": service.permission_for(view.device),
+                    "confirm_phrase": confirmation_phrase(view.device),
                     "inventory": inventory,
                 },
             )

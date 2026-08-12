@@ -11,7 +11,12 @@ from fwupd_webui.config import Config
 from fwupd_webui.fwupd.cli import FwupdCli, FwupdError
 from fwupd_webui.fwupd.flash import FlashJob, FlashManager, FlashStatus
 from fwupd_webui.fwupd.models import Device, Release
-from fwupd_webui.fwupd.policy import Permission, check_override, evaluate
+from fwupd_webui.fwupd.policy import (
+    Permission,
+    check_override,
+    confirmation_phrase,
+    evaluate,
+)
 
 log = logging.getLogger(__name__)
 
@@ -218,7 +223,7 @@ class FwupdService:
         # than in the route, so it holds regardless of what the HTML offered.
         if not check_override(device, typed_name):
             raise PermissionError(
-                f"Type the device name exactly to confirm. Expected: {device.display_name}"
+                f"Type the device name to confirm. Expected: {confirmation_phrase(device)}"
             )
 
         release = next((r for r in device.releases if r.version == version), None)
