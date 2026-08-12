@@ -7,7 +7,9 @@ It lists every device fwupd can enumerate — NVMe drives, HBAs, network cards,
 Thunderbolt controllers, docks — with current firmware versions and any updates
 available from LVFS.
 
-**It does not flash firmware.** This release is inventory only.
+**Flashing is off by default.** Out of the box this is a read-only inventory. Setting
+`FWUPD_WEBUI_ENABLE_FLASHING=true` enables the firmware write path; without it the flash
+routes are not registered at all.
 
 ## Why a container
 
@@ -37,13 +39,40 @@ Enumerating firmware means talking to hardware: NVMe admin commands, SCSI generi
 ioctls, sysfs attributes. That needs privileges a normal container does not have.
 Narrowing this to an explicit capability set is a planned improvement.
 
+### Flashing firmware
+
+Disabled unless `FWUPD_WEBUI_ENABLE_FLASHING=true`. When it is off the routes do not
+exist — `POST /flash` is a genuine 404, not a handler that refuses.
+
+With it on, four things still stand between a click and a write:
+
+1. Only `nvme` and `thunderbolt` devices flash directly. Everything else, including
+   `ata`, requires typing the device name exactly to confirm.
+2. Policy is enforced server-side. A disabled button is a suggestion; the server
+   refusing the POST is the control.
+3. There is no cancel. Killing a flash mid-write can leave partially written
+   firmware, so a job runs to completion or fails on its own.
+4. `uefi_capsule` remains disabled in the image, so BIOS updates stay unreachable.
+
+**Array drives.** On a NAS the `ata` devices are usually the array. Rewriting drive
+firmware under a live array risks the array, not just the drive. Stop the array first.
+
+**Staged firmware.** Most devices report `needs-reboot`, meaning the firmware is
+written but becomes live only after a reboot. The result screen says which happened,
+by re-reading the device after the flash. This tool never reboots the host.
+
+**Leaving it on.** Nothing expires the flag. Turning it off again is a container
+restart, and that is the only thing keeping the outermost control meaningful.
+
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `FWUPD_WEBUI_PORT` | `8099` | Listen port |
+| `FWUPD_WEBUI_ENABLE_FLASHING` | `false` | Enables the firmware write path |
 | `FWUPD_WEBUI_REFRESH_INTERVAL_HOURS` | `24` | Age above which startup refetches LVFS metadata |
 | `FWUPD_WEBUI_TIMEOUT_SECONDS` | `120` | Hard timeout per fwupdtool invocation |
+| `FWUPD_WEBUI_INSTALL_TIMEOUT_SECONDS` | `1800` | Hard timeout for a single flash |
 | `FWUPD_WEBUI_LVFS_REMOTE` | `lvfs` | `lvfs` or `lvfs-testing` |
 | `FWUPD_WEBUI_LOG_LEVEL` | `info` | Log verbosity |
 
