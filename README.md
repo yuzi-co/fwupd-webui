@@ -14,6 +14,19 @@ routes are not registered at all.
 **It never writes system firmware.** BIOS, UEFI capsule and SPI flash updates are
 refused outright, on every deployment target. See [Flashing firmware](#flashing-firmware).
 
+![Device inventory](docs/screenshots/inventory.png)
+
+Expanding a row shows its GUIDs, device ID and every available release with changelogs:
+
+![Device detail with available releases](docs/screenshots/device-detail.png)
+
+Flashing anything means naming it first. There is no one-click path, for any device:
+
+![Confirmation step requiring the device name](docs/screenshots/confirm.png)
+
+<sub>Screenshots use fwupd's synthetic test device, so the same images render on any
+machine.</sub>
+
 ## Install
 
 ### Docker, anywhere
@@ -252,6 +265,13 @@ make image        # build the container
 make fixtures     # regenerate test fixtures from real fwupdtool output
 make integration  # run tests against real fwupdtool inside the image
 ```
+
+The README screenshots come from a real browser driving a real container with fwupd's
+synthetic test device, not from mockups. Regenerate them by building with
+`--build-arg WITH_TEST_DEVICES=true`, running `fwupdtool enable-test-devices` inside it,
+and pointing a headless browser at the result. Doing this is worth more than it sounds:
+the first pass found three defects that the test suite could not see, because all three
+were about what ends up on a screen.
 
 `make fixtures` and `make integration` build the image with
 `--build-arg WITH_TEST_DEVICES=true`, which adds the `fwupd-tests` package so
