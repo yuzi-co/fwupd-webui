@@ -26,3 +26,13 @@ td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-al
 .releases { list-style: none; padding: 0; }
 .releases li { border-top: 1px solid var(--border); padding: 0.6rem 0; }
 .changelog { font-size: 0.9rem; opacity: 0.8; white-space: pre-wrap; }
+
+/* Phase A: flashing */
+.warn { color: #b45309; }
+.error { color: #b91c1c; }
+.ok { color: #15803d; }
+.confirm { border: 1px solid #d4d4d8; padding: 0.75rem; margin-top: 0.5rem; }
+.confirm label { display: block; margin: 0.5rem 0; }
+.flash-actions { margin-top: 0.4rem; }
+.phase { font-size: 1.2rem; }
+.log { background: #18181b; color: #e4e4e7; padding: 0.5rem; overflow-x: auto; white-space: pre-wrap; }
