@@ -3,6 +3,9 @@
 **Date:** 2026-08-11
 **Status:** Approved
 **Scope:** Phase C (read-only inventory). Phase A (flashing) is designed for but not built here.
+**Phase A shipped 2026-08-12** — see [the phase A design](2026-08-12-fwupd-webui-phase-a-design.md).
+It is disabled unless `FWUPD_WEBUI_ENABLE_FLASHING` is set, so everything below still describes the
+default behaviour of the container.
 
 ## Problem
 
@@ -38,7 +41,7 @@ Explicitly out of scope for v1, so they do not creep in during implementation:
 | Phase | Content | Status |
 | --- | --- | --- |
 | C | Read-only inventory + available updates | This spec |
-| A | Flashing runtime-updatable devices (NVMe, HBA, NIC, Thunderbolt) — no reboot, no ESP | Next |
+| A | Flashing runtime-updatable devices — opt-in via `FWUPD_WEBUI_ENABLE_FLASHING` | Shipped 2026-08-12 |
 | 2 | Scheduler, history DB, update notifications | Later |
 | B | UEFI capsule / BIOS updates | Probably never; see Risks |
 
@@ -138,7 +141,9 @@ Read-only is a structural property, not a convention:
 2. No code path in the application constructs an `install` argv. `fwupd/cli.py` exposes only
    read verbs.
 
-Phase A lifts item 2 deliberately and explicitly. Item 1 stays until phase B, if it ever happens.
+Phase A lifted item 2 deliberately and explicitly, and added an outer control of its own: the write
+path is not registered on the application at all unless `FWUPD_WEBUI_ENABLE_FLASHING` is set. Item 1
+stays until phase B, if it ever happens.
 
 ## Modules
 

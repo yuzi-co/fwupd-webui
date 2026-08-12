@@ -1,7 +1,8 @@
 # fwupd Web UI — Phase A Implementation Plan (Flashing)
 
 **Goal:** Add the firmware write path — select a release, flash it, watch progress — gated behind an
-explicit enable flag, a plugin allowlist, and a typed-name override.
+explicit enable flag and a typed-name confirmation. (As planned this also included a plugin
+allowlist; see the correction note below — it was removed during execution.)
 
 **Architecture:** A single server-owned `FlashJob` runs one `fwupdtool install` at a time under the
 existing `asyncio.Lock`. Progress is parsed from the subprocess's stderr and polled by htmx once a
@@ -12,6 +13,29 @@ the application is byte-for-byte the phase C container in behaviour.
 (`asyncio_mode=auto`), ruff.
 
 **Spec:** `docs/specs/2026-08-12-fwupd-webui-phase-a-design.md`
+
+> **Historical document — executed 2026-08-12, with corrections.** Kept as a record of
+> what was planned, not as a description of the code. Five things in it turned out to be
+> wrong when run against real fwupd and real hardware, and the spec carries the corrected
+> design:
+>
+> 1. **`--json` suppresses install progress entirely.** Task 4 builds
+>    `fwupdtool --json install`, which would have produced a progress view that never
+>    moved: one stderr line instead of 77. `install` is invoked without `--json`.
+> 2. **The install timeout bounded nothing.** `proc.wait(timeout=…)` sits after a
+>    blocking stderr read, so a hung fwupdtool emitting no output would never time out.
+>    Replaced with a watchdog thread that kills the process.
+> 3. **The `--force` structural guard was unsatisfiable as written.** `refresh()` already
+>    passes `--force` legitimately, to bypass fwupd's metadata-freshness short-circuit.
+>    The guard is scoped to `install()`'s source instead.
+> 4. **`python-multipart` was missing.** FastAPI needs it to parse the confirm step's
+>    form body; it was added as a runtime dependency.
+> 5. **The safety policy in Tasks 2, 6 and 8 was replaced entirely.** The plugin
+>    allowlist made the deployed host's cache pool — the drive Docker runs from — the
+>    easiest device in the UI to flash. There is now no allowlist: every flash requires
+>    the device name typed exactly, and storage plugins additionally carry a data-loss
+>    banner. `Permission` has `flashable`/`is_storage`, not `allowed`/`needs_override`.
+
 
 ## Global Constraints
 

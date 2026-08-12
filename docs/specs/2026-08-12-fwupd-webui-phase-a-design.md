@@ -32,13 +32,14 @@ Two facts follow, and both drive the design:
 
 1. **Every flashable device on this host reports `needs-reboot`.** Treating `needs-reboot` as a
    blocking condition would disable the feature entirely. It is therefore a warning, never a block.
-2. **Four of the five are the array drives.** Rewriting drive firmware under a live array risks the
-   array, not merely the drive. They must not be one click away.
+2. **Four of the five are the array drives, and the fifth is the cache pool.** The `nvme` mounts at
+   `/mnt/cache`, which is where Docker — including this container — lives. Every flashable device
+   on this host is therefore holding data something is actively using.
 
 ## Goals
 
 - Flash a selected release onto a selected device, with live progress.
-- Make the dangerous cases require deliberate action, and the safe cases easy.
+- Make every flash a deliberate act, and make the data-destroying cases visually unmistakable.
 - Keep the UEFI capsule path structurally unreachable, exactly as in phase C.
 
 ## Non-Goals
@@ -59,6 +60,11 @@ Established empirically against fwupd 2.1.7 in the shipped image, not from docum
 - `fwupdtool install FILE|URI [DEVICE-ID]` — **accepts an https URI directly** and downloads it
   itself, including jcat signature verification. Confirmed by observing `Downloading…: 100.0%`
   before a deliberate 404. We therefore write no download, cache, or signature-checking code.
+- **`--json` suppresses install progress entirely.** With it, an install emits one stderr line and
+  empty stdout; without it, 77 lines carrying the full phase sequence. `install` is therefore the
+  one verb invoked without `--json`, and consequently reports success through its exit code rather
+  than a structured payload. Discovered during implementation, after the plan had specified
+  `--json install`.
 - `--allow-older` (downgrade), `--allow-reinstall` (reinstall), `--allow-branch-switch`, `--force`.
 - A real install of the synthetic test device exits 0 and emits this phase sequence on **stderr**:
   `Loading… → Decompressing… → Writing… → Verifying… → Restarting device… → Waiting… → Idle…`
@@ -101,29 +107,58 @@ resolve to "enabled", and a config that means to enable flashing must not quietl
 New module `fwupd/policy.py`. Pure data and predicates — no subprocess, no I/O, no HTTP. It is the
 module most likely to be edited later, so it is the one that must be trivial to test.
 
-Three tiers, evaluated per device:
+**Amended 2026-08-12, after deployment.** This section originally specified a plugin allowlist:
+devices on a runtime-safe list flashed in one click, everything else required typing the device
+name. That design was wrong, and the story of how is the reason the current rule looks the way it
+does.
 
-| Tier | Condition | UI |
-| --- | --- | --- |
-| Allowed | `updatable` **and** plugin on the runtime-safe list | Update button live |
-| Blocked, overridable | `updatable` **and** plugin not on the list | Button disabled; unlock by typing the device name exactly |
-| Not updatable | no `updatable` flag | No button; reason shown |
+The initial list was `nvme` and `thunderbolt`, with `ata` deliberately excluded because the
+deployed host's `ata` devices are the array. On real hardware that turned out to be inverted:
 
-The initial allowlist is `nvme` and `thunderbolt`. `ata` is deliberately excluded: on the deployed
-host those devices are the array.
+```
+nvme0n1p1  →  /mnt/cache          (Docker itself runs from here)
+sdc/sdd/sde →  array members
+```
 
-The override is checked **server-side**. A disabled button in HTML is a suggestion; the server
-refusing the POST is the control.
+The `nvme` was the cache pool — the drive this very container runs from — and it was the single
+easiest thing in the UI to flash, while the array disks correctly demanded typing. Plugin identity
+is a poor proxy for risk: the same NVMe in a USB enclosure would be perfectly safe. What makes a
+device dangerous is that something is *using* it, which cannot be determined from the plugin at all.
+
+The first correction added a storage tier above the allowlist. The second removed the allowlist
+entirely, because classifying 124 fwupd plugins by risk is a judgement that has to be right every
+time and had already been wrong twice.
+
+**The rule now, in full:**
+
+| Condition | Result |
+| --- | --- |
+| Flashing not enabled | Not flashable; reason names the variable |
+| No `updatable` flag | Not flashable; reason says so |
+| Plugin in `STORAGE_PLUGINS` | Flashable after typing the device name, plus a prominent data-loss banner |
+| Anything else | Flashable after typing the device name |
+
+There is no path that flashes without confirmation. `STORAGE_PLUGINS` is `{ata, emmc, nvme, scsi}`,
+enumerated from `fwupdtool get-plugins` on 2.1.7 rather than guessed. It affects only how loudly the
+UI warns, never whether confirmation is required — so misclassifying a plugin can no longer create a
+one-click path to anything.
+
+`Permission` therefore carries `flashable` and `is_storage`, not `allowed` and `needs_override`;
+those two would now be constants. A test asserts `RUNTIME_SAFE_PLUGINS` no longer exists, so the
+decision to have no allowlist is guarded rather than only the behaviour it produces.
+
+The confirmation is checked **server-side**. The HTML input is a prompt; the server refusing the
+POST is the control.
 
 `needs-reboot` and `require-ac` surface as warnings in the confirm step and in the post-flash
 notice. Neither blocks.
 
 `uefi_capsule` remains disabled in the baked `/etc/fwupd/fwupd.conf`, so the ESP staging path stays
-unreachable no matter what the allowlist says.
+unreachable regardless of anything above.
 
-The four controls in summary: the feature is absent unless enabled; the plugin must be allowlisted
-or the device name typed exactly; the server enforces both regardless of what the HTML offered; and
-the capsule plugin is not loaded at all.
+The four controls in summary: the feature is absent unless enabled; every flash requires the device
+name typed exactly, with storage additionally carrying a data-loss warning; the server enforces this
+regardless of what the HTML offered; and the capsule plugin is not loaded at all.
 
 ### A guard is being removed
 
@@ -217,8 +252,8 @@ partially written firmware. The job runs to completion or fails on its own.
 Existing routes gain one guard: an active job redirects to `/flash`.
 
 **Confirm step.** Opening Update renders a fragment showing device, current → target version, and
-the relevant flags as plain warnings. Allowlisted devices need one confirm click. Blocked devices
-render the override input in the same fragment.
+the relevant flags as plain warnings. Every flashable device renders the name-confirmation input;
+storage devices additionally render a prominent data-loss banner above it.
 
 Downgrade and reinstall are reached from the device detail's release list and route through the same
 confirm fragment with a different operation.
@@ -238,14 +273,17 @@ vendor-supplied strings and never receive `| safe`.
 
 Ordered as the implementation plan will build it:
 
-1. **Policy** — no subprocess at all. Allowlisted permits; non-allowlisted blocks; override accepts
-   the exact name and rejects a near-miss; a non-`updatable` device offers nothing.
+1. **Policy** — no subprocess at all. Every plugin is flashable-with-confirmation; storage plugins
+   are marked as such and non-storage plugins are not (a mouse receiver carrying a data-loss
+   warning would devalue the warning where it matters); confirmation accepts the exact name and
+   rejects a near-miss; a non-`updatable` device offers nothing; and `RUNTIME_SAFE_PLUGINS` does
+   not exist.
 2. **Progress parsing** — against real captured stderr, committed as a fixture from an actual
    synthetic-device install: 77 lines including ANSI warnings, engine chatter, and the
    non-monotonic percentage.
 3. **Job lifecycle** — against a fake CLI. Phase tracking, terminal states, exit code and last phase
    recorded on failure.
-4. **Routes** — active job redirects; blocked device refused without the typed name; a second
+4. **Routes** — active job redirects; every device refused without the typed name; a second
    `POST /flash` refused while one runs.
 5. **Integration** — a real flash of the synthetic device inside the image, asserting exit 0 and the
    expected phase sequence. This is the test that catches fwupd changing its progress format, which
@@ -255,7 +293,7 @@ Ordered as the implementation plan will build it:
 ## Risks
 
 **A flash bricks a device.** The residual risk the feature exists to take on. Mitigated by the
-enable flag, the allowlist, the typed override, server-side enforcement, and no cancellation. Not
+enable flag, the mandatory typed confirmation, server-side enforcement, and no cancellation. Not
 eliminated.
 
 **The enable flag becomes ambient.** Someone sets `FWUPD_WEBUI_ENABLE_FLASHING=true` to perform one
@@ -265,7 +303,10 @@ solved problem. A future phase could expire the capability after a period, but t
 that lapse mid-operation are their own hazard and are not worth building for a single-operator NAS.
 
 **Array drives flashed under a live array.** The most damaging realistic outcome on this host.
-Mitigated by keeping `ata` off the allowlist so it requires typing the device name.
+Mitigated by requiring the device name typed for every flash, and by the data-loss banner that
+every storage device carries. Not mitigated by any attempt to detect whether the disk is actually
+mounted -- that would need host mount visibility, and is deliberately not attempted. All storage is
+treated as the dangerous case instead.
 
 **fwupd changes its progress output.** The parser is best-effort by construction: unrecognised lines
 go to the log tail rather than failing the job, so a format change degrades progress display without

@@ -1,7 +1,8 @@
 # fwupd-webui
 
-A read-only web UI for [fwupd](https://fwupd.org), packaged as a Docker container for
-Unraid and other systems without a native fwupd installation.
+A web UI for [fwupd](https://fwupd.org), packaged as a Docker container for Unraid and
+other systems without a native fwupd installation. Read-only by default; firmware
+flashing is available behind an explicit opt-in.
 
 It lists every device fwupd can enumerate — NVMe drives, HBAs, network cards,
 Thunderbolt controllers, docks — with current firmware versions and any updates
@@ -46,14 +47,22 @@ exist — `POST /flash` is a genuine 404, not a handler that refuses.
 
 With it on, four things still stand between a click and a write:
 
-1. **Nothing flashes without typing the device name exactly.** There is no
-   allowlist and no one-click path. Storage devices (`nvme`, `ata`, `scsi`, `emmc`)
-   additionally show a prominent data-loss warning.
-2. Policy is enforced server-side. A disabled button is a suggestion; the server
+1. **Nothing flashes without typing the device name exactly.** There is no allowlist
+   and no one-click path — the same rule applies to a mouse receiver and to your cache
+   drive. Storage devices (`nvme`, `ata`, `scsi`, `emmc`) additionally show a prominent
+   data-loss warning, so the visual signal distinguishes the dangerous case even though
+   the mechanism does not.
+2. Confirmation is enforced server-side. The HTML input is a prompt; the server
    refusing the POST is the control.
 3. There is no cancel. Killing a flash mid-write can leave partially written
    firmware, so a job runs to completion or fails on its own.
 4. `uefi_capsule` remains disabled in the image, so BIOS updates stay unreachable.
+
+The design started with an allowlist of plugins that could flash in one click. It was
+wrong twice — most memorably by making a NAS cache pool, the drive Docker runs from,
+easier to flash than the array disks. Classifying 124 fwupd plugins by risk is a
+judgement that has to be right every time; requiring one confirmation always is a rule
+that cannot be got wrong.
 
 **Storage devices.** The hazard is not which plugin drives a disk, it is that the disk
 holds data something is using. On a NAS the `ata` devices are usually the array and the
@@ -161,6 +170,8 @@ test asserts the plugin reports itself disabled.
 - [Phase C design — read-only inventory](docs/specs/2026-08-11-fwupd-webui-design.md)
 - [Phase C implementation plan](docs/plans/2026-08-11-fwupd-webui-phase-c.md)
 - [Phase A design — flashing](docs/specs/2026-08-12-fwupd-webui-phase-a-design.md)
+- [Phase A implementation plan](docs/plans/2026-08-12-fwupd-webui-phase-a.md) — historical; records
+  five assumptions that real fwupd and real hardware disproved
 
 ## License
 
