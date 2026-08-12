@@ -70,6 +70,34 @@ caught it. The comment is wrong and must be fixed as part of this work.
 
 ## Safety policy
 
+Four independent controls, outermost first. Each one alone is sufficient to prevent a write; a bug
+in any one of them is contained by the others.
+
+### 1. The feature does not exist unless enabled
+
+`FWUPD_WEBUI_ENABLE_FLASHING`, default **false**. When it is not explicitly enabled:
+
+- the flash routes are **not registered on the application at all** — `POST /flash` is a genuine
+  404, not a 403 from a handler that decided to refuse;
+- no flash controls render anywhere in the UI;
+- the device detail view states that flashing is disabled and names the variable, so an operator
+  who expected a button learns why there is none.
+
+Not-registered rather than registered-and-refusing is the same reasoning as
+`DisabledPlugins=uefi_capsule`: a capability that does not exist cannot be reached by a mistake in
+the layer above it.
+
+The practical effect is that **the shipped container behaves exactly as it does today**. An existing
+deployment that pulls this release gains no write capability until someone deliberately sets the
+variable, and turning it back off is a container restart.
+
+Accepted values are `true`/`false`, `1`/`0`, `yes`/`no`, case-insensitive. Anything else is a
+startup error rather than a silent fallback — a typo in this particular variable must not quietly
+resolve to "enabled", and a config that means to enable flashing must not quietly resolve to
+"disabled" either.
+
+### 2–4. Per-device policy
+
 New module `fwupd/policy.py`. Pure data and predicates — no subprocess, no I/O, no HTTP. It is the
 module most likely to be edited later, so it is the one that must be trivial to test.
 
@@ -91,7 +119,11 @@ refusing the POST is the control.
 notice. Neither blocks.
 
 `uefi_capsule` remains disabled in the baked `/etc/fwupd/fwupd.conf`, so the ESP staging path stays
-unreachable no matter what the allowlist says. Two independent controls, as in phase C.
+unreachable no matter what the allowlist says.
+
+The four controls in summary: the feature is absent unless enabled; the plugin must be allowlisted
+or the device name typed exactly; the server enforces both regardless of what the HTML offered; and
+the capsule plugin is not loaded at all.
 
 ### A guard is being removed
 
@@ -148,11 +180,21 @@ the hardware concurrently.
 first would make every page hang for the duration of the flash — the behaviour this design
 explicitly rejects.
 
-### Timeouts
+### Configuration
 
-The existing `FWUPD_WEBUI_TIMEOUT_SECONDS` (120) continues to govern enumeration. Flashing gets its
-own `FWUPD_WEBUI_INSTALL_TIMEOUT_SECONDS`, default `1800`. A slow drive write must not be severed by
-a timeout tuned for `get-devices`.
+Two new variables:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `FWUPD_WEBUI_ENABLE_FLASHING` | `false` | Registers the flash routes and UI. Without it this is the phase C container. |
+| `FWUPD_WEBUI_INSTALL_TIMEOUT_SECONDS` | `1800` | Hard timeout for a flash. |
+
+The existing `FWUPD_WEBUI_TIMEOUT_SECONDS` (120) continues to govern enumeration. Flashing needs its
+own because a slow drive write must not be severed by a timeout tuned for `get-devices`.
+
+The Unraid Community Applications template exposes `FWUPD_WEBUI_ENABLE_FLASHING` as a visible
+variable defaulting to `false`, with its description stating plainly that enabling it permits
+writing firmware.
 
 ## Safety: no cancellation
 
@@ -211,7 +253,14 @@ Ordered as the implementation plan will build it:
 ## Risks
 
 **A flash bricks a device.** The residual risk the feature exists to take on. Mitigated by the
-allowlist, the typed override, server-side enforcement, and no cancellation. Not eliminated.
+enable flag, the allowlist, the typed override, server-side enforcement, and no cancellation. Not
+eliminated.
+
+**The enable flag becomes ambient.** Someone sets `FWUPD_WEBUI_ENABLE_FLASHING=true` to perform one
+update and leaves it on, at which point the outermost control is gone permanently. Mitigated only by
+documentation, which is a weak mitigation and is recorded here as a known limitation rather than a
+solved problem. A future phase could expire the capability after a period, but timed capabilities
+that lapse mid-operation are their own hazard and are not worth building for a single-operator NAS.
 
 **Array drives flashed under a live array.** The most damaging realistic outcome on this host.
 Mitigated by keeping `ata` off the allowlist so it requires typing the device name.
