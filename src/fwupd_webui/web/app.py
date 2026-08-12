@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from fwupd_webui import app_version
 from fwupd_webui.config import Config
 from fwupd_webui.fwupd.service import MetadataStatus
 from fwupd_webui.web.api_routes import api_router
@@ -57,6 +58,9 @@ def create_app(service, config: Config) -> FastAPI:
     templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
     templates.env.filters["metadata_age"] = metadata_age
     templates.env.filters["plain_text"] = plain_text
+    # Global rather than per-route: base.html renders it on every page,
+    # including the error and empty-state pages that have no inventory.
+    templates.env.globals["app_version"] = app_version()
 
     app.state.service = service
     app.state.config = config

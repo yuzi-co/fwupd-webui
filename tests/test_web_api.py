@@ -189,3 +189,20 @@ def test_api_is_served_even_when_flashing_is_disabled():
 def test_api_never_returns_html(path):
     resp = client_for(FakeService(inventory=make_inventory())).get(path)
     assert "<html" not in resp.text.lower()
+
+
+def test_status_reports_the_application_version():
+    """A monitor should be able to answer 'what is deployed where' without
+    shelling into the container."""
+    from fwupd_webui import app_version
+
+    body = client_for(FakeService(inventory=make_inventory())).get("/api/status").json()
+    assert body["version"] == app_version()
+
+
+def test_version_is_present_even_when_fwupd_fails():
+    from fwupd_webui import app_version
+    from fwupd_webui.fwupd.cli import FwupdCommandFailed
+
+    resp = client_for(FakeService(error=FwupdCommandFailed(1, "boom"))).get("/api/status")
+    assert resp.json()["version"] == app_version()
