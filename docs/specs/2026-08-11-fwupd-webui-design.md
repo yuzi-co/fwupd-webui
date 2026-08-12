@@ -270,7 +270,7 @@ Environment variables only:
 - `docker-compose.yml` for local development, with host mounts wired so development runs against
   real hardware.
 - **amd64 only.**
-- Published to `ghcr.io`.
+- Published to `ghcr.io`. **Not yet done** — the release workflow exists but is manual-dispatch only, and no image has been pushed.
 - An Unraid Community Applications XML template declaring the port, the three mounts, the
   privileged flag, the WebUI link, an icon, and project/support URLs.
 

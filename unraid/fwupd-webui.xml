@@ -8,7 +8,11 @@
   <Support>https://github.com/yuzi-co/fwupd-webui/issues</Support>
   <Project>https://github.com/yuzi-co/fwupd-webui</Project>
   <Overview>
-    Read-only firmware inventory for your server. Lists every device fwupd can see
+    NOTE: no image is published to ghcr.io yet. Build the image yourself and load it
+    onto this machine, then set Repository below to the local tag (for example
+    fwupd-webui:latest). See the project README for the one-line SSH transfer.
+
+Read-only firmware inventory for your server. Lists every device fwupd can see
     — NVMe drives, HBAs, network cards, Thunderbolt controllers, docks — with its
     current firmware version and any updates available from LVFS.
 

@@ -18,7 +18,13 @@ refused outright, on every deployment target. See [Flashing firmware](#flashing-
 
 ### Docker, anywhere
 
+**No image is published yet** — build it yourself:
+
 ```bash
+git clone https://github.com/yuzi-co/fwupd-webui.git
+cd fwupd-webui
+docker build -t fwupd-webui:latest .
+
 docker run -d --name fwupd-webui \
   --privileged \
   -p 8099:8099 \
@@ -26,16 +32,25 @@ docker run -d --name fwupd-webui \
   -v /dev:/dev \
   -v /run/udev:/run/udev:ro \
   -v fwupd-metadata:/var/lib/fwupd \
-  ghcr.io/yuzi-co/fwupd-webui:latest
+  fwupd-webui:latest
 ```
 
-Or use the bundled [`docker-compose.yml`](docker-compose.yml).
+Or `docker compose up -d` with the bundled [`docker-compose.yml`](docker-compose.yml),
+which builds from source.
+
+To run it on a machine that cannot build (an Unraid box, say), build elsewhere and ship
+the image over SSH:
+
+```bash
+docker save fwupd-webui:latest | gzip -1 | ssh root@HOST 'gunzip | docker load'
+```
 
 ### Unraid
 
-Install from Community Applications, or add
-[`unraid/fwupd-webui.xml`](unraid/fwupd-webui.xml) as a template. It sets up the mounts,
-the port and the flashing toggle for you.
+The template at [`unraid/fwupd-webui.xml`](unraid/fwupd-webui.xml) sets up the mounts,
+the port and the flashing toggle. **It expects a published image, which does not exist
+yet**, so for now either edit its `<Repository>` to a locally loaded tag, or build
+elsewhere and `docker load` onto the box using the SSH one-liner above.
 
 Unraid runs Slackware from a USB stick with the OS in RAM and no persistent package
 manager, so a container is the only practical route there.
@@ -300,6 +315,7 @@ test asserts the plugin reports itself disabled.
 - [`deploy/proxmox-lxc.sh`](deploy/proxmox-lxc.sh) — creates a Proxmox LXC and installs into it
 - [`deploy/systemd/fwupd-webui.service`](deploy/systemd/fwupd-webui.service) — the unit itself
 - [`unraid/fwupd-webui.xml`](unraid/fwupd-webui.xml) — Unraid Community Applications template
+- [`.github/workflows/release.yml`](.github/workflows/release.yml) — GHCR publish, manual dispatch only
 
 ## Design documents
 
@@ -309,6 +325,12 @@ test asserts the plugin reports itself disabled.
 - [Phase A implementation plan](docs/plans/2026-08-12-fwupd-webui-phase-a.md) — historical; records
   five assumptions that real fwupd and real hardware disproved
 
+## Status
+
+Not yet released. No container image is published, and the version is `0.1.0`
+unreleased. Everything here works — both deployment paths that build from source are
+verified on real hardware — but installing from a registry is not yet possible.
+
 ## License
 
-MIT
+[MIT](LICENSE)
