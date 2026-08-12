@@ -23,14 +23,12 @@
 set -euo pipefail
 
 HOSTNAME="${HOSTNAME:-fwupd-webui}"
-STORAGE="${STORAGE:-local-lvm}"
 DISK_GB="${DISK_GB:-4}"
 CORES="${CORES:-1}"
 RAM_MB="${RAM_MB:-512}"
 BRIDGE="${BRIDGE:-vmbr0}"
 PORT="${PORT:-8099}"
 ENABLE_FLASHING="${ENABLE_FLASHING:-false}"
-TEMPLATE_STORAGE="${TEMPLATE_STORAGE:-local}"
 
 log()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mWarning:\033[0m %s\n' "$*"; }
@@ -42,9 +40,19 @@ command -v pct >/dev/null || die "pct not found -- run this on the Proxmox host,
 CTID="${CTID:-$(pvesh get /cluster/nextid)}"
 pct status "$CTID" >/dev/null 2>&1 && die "container $CTID already exists"
 
+# Storage names are per-host. `local-lvm` is only the default on an LVM-thin
+# install; a btrfs or ZFS host has neither. Detect rather than assume, and let
+# STORAGE / TEMPLATE_STORAGE override.
+STORAGE="${STORAGE:-$(pvesm status -content rootdir 2>/dev/null | awk 'NR>1 {print $1; exit}')}"
+[ -n "$STORAGE" ] || die "no storage accepting container rootfs; set STORAGE=<name>"
+
+TEMPLATE_STORAGE="${TEMPLATE_STORAGE:-$(pvesm status -content vztmpl 2>/dev/null | awk 'NR>1 {print $1; exit}')}"
+[ -n "$TEMPLATE_STORAGE" ] || die "no storage accepting templates; set TEMPLATE_STORAGE=<name>"
+
 cat <<BANNER
 
   fwupd-webui  ->  Proxmox LXC $CTID
+  rootfs: $STORAGE    templates: $TEMPLATE_STORAGE    bridge: $BRIDGE
 
   This creates a PRIVILEGED container with full device access. That is not a
   default worth glossing over: enumerating firmware means issuing NVMe admin
@@ -61,11 +69,18 @@ read -r -p "Continue? [y/N] " reply
 
 log "locating a Debian 13 template"
 pveam update >/dev/null 2>&1 || warn "pveam update failed; using the local template list"
-TEMPLATE="$(pveam available --section system 2>/dev/null \
-    | awk '/debian-13-standard/ {print $2}' | sort -V | tail -1)"
-[ -n "$TEMPLATE" ] || TEMPLATE="$(pveam available --section system 2>/dev/null \
-    | awk '/debian-12-standard/ {print $2}' | sort -V | tail -1)"
-[ -n "$TEMPLATE" ] || die "no Debian standard template found in 'pveam available'"
+# Filter by architecture: the template list carries amd64 and arm64 side by
+# side, and `sort -V | tail -1` alone would pick arm64 on an amd64 host.
+ARCH="$(dpkg --print-architecture 2>/dev/null || echo amd64)"
+pick_template() {
+    pveam available --section system 2>/dev/null \
+        | awk -v pat="$1" -v suffix="_${ARCH}.tar" \
+              '$2 ~ pat && index($2, suffix) {print $2}' \
+        | sort -V | tail -1
+}
+TEMPLATE="$(pick_template 'debian-13-standard')"
+[ -n "$TEMPLATE" ] || TEMPLATE="$(pick_template 'debian-12-standard')"
+[ -n "$TEMPLATE" ] || die "no Debian $ARCH template found in 'pveam available'"
 
 if ! pveam list "$TEMPLATE_STORAGE" 2>/dev/null | grep -q "$TEMPLATE"; then
     log "downloading $TEMPLATE"
