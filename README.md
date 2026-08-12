@@ -122,9 +122,11 @@ exist — `POST /flash` is a genuine 404, not a handler that refuses.
 
 With it on, four things still stand between a click and a write:
 
-1. **Nothing flashes without typing the device name exactly.** There is no allowlist
-   and no one-click path — the same rule applies to a mouse receiver and to your cache
-   drive. Storage devices (`nvme`, `ata`, `scsi`, `emmc`) additionally show a prominent
+1. **Nothing flashes without typing the device name.** There is no allowlist and no
+   one-click path — the same rule applies to a mouse receiver and to your cache drive.
+   Matching ignores case, extra whitespace and trademark glyphs, and the UI shows a
+   phrase you can actually type; it is a deliberateness check, not a transcription
+   test. Storage devices (`nvme`, `ata`, `scsi`, `emmc`) additionally show a prominent
    data-loss warning, so the visual signal distinguishes the dangerous case even though
    the mechanism does not.
 2. Confirmation is enforced server-side. The HTML input is a prompt; the server

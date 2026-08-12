@@ -102,12 +102,46 @@ def evaluate(device: Device, *, enabled: bool) -> Permission:
     )
 
 
+# Symbols that appear in vendor device names and that nobody should have to
+# reproduce on a keyboard to confirm an action.
+_UNTYPEABLE = "™®©℠"
+
+
+def confirmation_phrase(device: Device) -> str:
+    """The string the UI asks the operator to type.
+
+    The device's own name, minus glyphs that are impractical to type. Falls
+    back to the raw name if stripping would leave nothing, so a degenerate
+    name never turns into an empty phrase that anything matches.
+    """
+    stripped = device.display_name
+    for symbol in _UNTYPEABLE:
+        stripped = stripped.replace(symbol, "")
+    stripped = " ".join(stripped.split())
+    return stripped or device.display_name
+
+
+def _normalize(value: str) -> str:
+    for symbol in _UNTYPEABLE:
+        value = value.replace(symbol, "")
+    return " ".join(value.split()).casefold()
+
+
 def check_override(device: Device, typed_name: str | None) -> bool:
-    """True when the operator typed the device name exactly.
+    """True when the operator typed the device's name.
 
     Required for every flash, not only risky ones. Server-side by design: the
     HTML input is a prompt, this is the control.
+
+    Matching is deliberately forgiving about presentation and strict about
+    content. Case, surrounding and repeated whitespace, and trademark glyphs
+    are all ignored; the words themselves are not. The point of this step is
+    to make the operator look at the device and name it deliberately, not to
+    test whether they can produce a U+2122 on a keyboard.
     """
     if not typed_name:
         return False
-    return typed_name.strip() == device.display_name
+    typed = _normalize(typed_name)
+    if not typed:
+        return False
+    return typed == _normalize(device.display_name)

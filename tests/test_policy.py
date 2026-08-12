@@ -109,3 +109,47 @@ def test_esp_block_beats_the_updatable_flag():
         device(Plugin="uefi_capsule", Flags=["updatable", "needs-reboot"]), enabled=True
     )
     assert perm.flashable is False
+
+
+def test_confirmation_phrase_drops_untypeable_symbols():
+    """Nobody should have to produce a trademark glyph to confirm a flash."""
+    from fwupd_webui.fwupd.policy import confirmation_phrase
+
+    assert confirmation_phrase(device(Name="Integrated Webcam™")) == "Integrated Webcam"
+    assert confirmation_phrase(device(Name="Acme Widget®")) == "Acme Widget"
+    assert confirmation_phrase(device(Name="Thing© v2")) == "Thing v2"
+
+
+def test_override_accepts_the_phrase_without_the_symbol():
+    assert check_override(device(Name="Integrated Webcam™"), "Integrated Webcam") is True
+
+
+def test_override_still_accepts_the_symbol_if_typed():
+    assert check_override(device(Name="Integrated Webcam™"), "Integrated Webcam™") is True
+
+
+def test_override_is_case_insensitive():
+    assert check_override(device(Name="ST4000VN008-2DR166"), "st4000vn008-2dr166") is True
+
+
+def test_override_tolerates_surrounding_and_repeated_whitespace():
+    assert check_override(device(Name="Samsung  SSD 990"), "  samsung ssd 990 ") is True
+
+
+def test_override_still_rejects_a_different_device():
+    assert check_override(device(Name="ST4000VN008-2DR166"), "ST4000VN008") is False
+    assert check_override(device(Name="Samsung SSD 990"), "Samsung SSD 980") is False
+
+
+def test_override_still_rejects_empty_after_normalisation():
+    assert check_override(device(Name="Integrated Webcam™"), "   ") is False
+
+
+def test_a_device_named_only_with_symbols_cannot_be_confirmed_by_blank():
+    """Degenerate case: if stripping leaves nothing, an empty answer must not
+    suddenly match."""
+    from fwupd_webui.fwupd.policy import confirmation_phrase
+
+    sym = device(Name="™")
+    assert confirmation_phrase(sym) == "™", "fall back to the raw name rather than nothing"
+    assert check_override(sym, "") is False

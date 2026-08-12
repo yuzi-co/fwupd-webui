@@ -107,3 +107,11 @@ def test_peripheral_gets_no_storage_warning():
     body = confirm(client_for(service_with(plugin="logitech_hidpp")))
     assert 'class="danger"' not in body
     assert 'name="confirm_name"' in body, "still typed, just not a data hazard"
+
+
+def test_confirm_asks_for_a_typeable_phrase():
+    """The webcam's real name carries a trademark glyph. Asking the operator to
+    reproduce it is transcription, not deliberateness."""
+    body = confirm(client_for(service_with(name="Integrated Webcam™")))
+    assert "Integrated Webcam" in body
+    assert "<code>Integrated Webcam</code>" in body, "the prompt must be typeable"
