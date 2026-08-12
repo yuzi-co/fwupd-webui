@@ -16,6 +16,18 @@ from fwupd_webui.fwupd.models import Device
 # Enumerated from `fwupdtool get-plugins` on fwupd 2.1.7, not guessed.
 STORAGE_PLUGINS = frozenset({"ata", "emmc", "nvme", "scsi"})
 
+# Plugins this application refuses to flash through, ever. Both stage their
+# payload to the EFI system partition, which is the one write this project has
+# excluded from the outset: on Unraid the ESP is the removable USB stick holding
+# the OS and array configuration, and a mis-staged capsule leaves it unbootable.
+#
+# The Docker image also disables uefi_capsule in its baked /etc/fwupd/fwupd.conf.
+# This check exists because that file is a property of the image, not of the
+# application: an LXC or bare-metal install uses the host's fwupd configuration,
+# where the plugin is live. Enforcing it here means the guarantee holds on every
+# deployment target and can be tested without fwupd present at all.
+BLOCKED_PLUGINS = frozenset({"uefi_capsule", "uefi_dbx"})
+
 
 @dataclass(frozen=True)
 class Permission:
@@ -45,6 +57,15 @@ def evaluate(device: Device, *, enabled: bool) -> Permission:
             flashable=False,
             is_storage=is_storage,
             reason="Flashing is disabled. Set FWUPD_WEBUI_ENABLE_FLASHING=true to enable it.",
+        )
+    if plugin in BLOCKED_PLUGINS:
+        return Permission(
+            flashable=False,
+            is_storage=is_storage,
+            reason=(
+                f"The {plugin} plugin stages firmware to the EFI system partition, which "
+                "this tool never writes to. Use your system's own firmware update path."
+            ),
         )
     if not device.updatable:
         return Permission(
