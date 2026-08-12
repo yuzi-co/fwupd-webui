@@ -116,9 +116,9 @@ lxc.cgroup2.devices.allow: a
 lxc.cap.drop:
 lxc.mount.auto: proc:rw sys:rw cgroup:rw
 
-# fwupd enumerates through the udev database. Without this the device list comes
-# back nearly empty rather than erroring -- the single most common way this ends
-# up looking broken.
+# An LXC gets neither of these by default, unlike a privileged Docker container.
+# /dev is what actually matters; /run/udev is cheap insurance for fwupd versions
+# and plugins that consult the udev database rather than sysfs directly.
 lxc.mount.entry: /run/udev run/udev none bind,ro,create=dir 0 0
 lxc.mount.entry: /dev dev none bind,rw,create=dir 0 0
 LXCCONF

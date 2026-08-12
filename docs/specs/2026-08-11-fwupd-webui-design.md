@@ -129,12 +129,33 @@ The container is useless without host device visibility:
 | `/run/udev` (read-only) | fwupd enumerates through the udev database |
 | `--privileged` | v1 default in the Unraid template |
 
-`/run/udev` is the non-obvious one. Without the host's udev database, fwupd's enumeration returns a
-nearly empty device list rather than an error — a silent failure that looks like "this container is
-broken". The empty-state screen (below) exists specifically to catch it.
+**Corrected 2026-08-12, by measurement.** This document originally claimed `/run/udev` was the
+non-obvious critical mount, without which enumeration returns a nearly empty list. That is false on
+fwupd 2.1.7: a privileged container with no `/run/udev` at all produces byte-identical output —
+same 8 devices, same GUIDs, same versions.
 
-Replacing `--privileged` with a narrower explicit capability set is a desirable later refinement,
-not a v1 requirement.
+What actually matters under Docker is `--privileged`, and only that. Measured on the deployed host:
+
+| Configuration | Devices |
+| --- | --- |
+| `--privileged` | 8 |
+| `--cap-add=ALL` + seccomp/AppArmor unconfined + all mounts | 2 |
+| all mounts, unprivileged | 2 |
+| plain container | 2 |
+
+A privileged container already receives `/sys` read-write and a full `/dev`, which is why the
+explicit binds change nothing there. They are retained because other runtimes are not Docker — the
+Proxmox LXC does need its `/dev` and `/run/udev` entries declared — but the claim that omitting
+`/run/udev` silently empties the device list was an assumption that survived three months of docs
+without anyone testing it.
+
+The empty-state screen still earns its place: an unprivileged container reports the CPU and display
+and nothing else, which looks like a working UI with no disks rather than an obvious failure.
+
+Replacing `--privileged` with a narrower capability set was attempted and **does not work**.
+`--cap-add=ALL` with seccomp and AppArmor unconfined still reaches only 2 of 8 devices, and adding
+`--device-cgroup-rule` sets drops it to 0 because specifying rules replaces Docker's defaults
+instead of extending them. Recorded as a measured dead end, not a pending refinement.
 
 ### Read-only enforcement
 
