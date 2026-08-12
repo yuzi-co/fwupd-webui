@@ -41,6 +41,7 @@ class Inventory:
     devices: list[DeviceView]
     metadata: MetadataStatus
     fwupd_version: str
+    flashing_enabled: bool = False
 
 
 class FwupdService:
@@ -119,6 +120,7 @@ class FwupdService:
             devices=views,
             metadata=self._status(error=update_error),
             fwupd_version=version,
+            flashing_enabled=self._config.enable_flashing,
         )
 
     async def refresh(self) -> MetadataStatus:
