@@ -16,17 +16,28 @@ from fwupd_webui.fwupd.models import Device
 # Enumerated from `fwupdtool get-plugins` on fwupd 2.1.7, not guessed.
 STORAGE_PLUGINS = frozenset({"ata", "emmc", "nvme", "scsi"})
 
-# Plugins this application refuses to flash through, ever. Both stage their
-# payload to the EFI system partition, which is the one write this project has
-# excluded from the outset: on Unraid the ESP is the removable USB stick holding
-# the OS and array configuration, and a mis-staged capsule leaves it unbootable.
+# Plugins this application refuses to flash through, ever: every route to system
+# firmware. Failure here does not cost a peripheral, it costs the motherboard,
+# and recovery needs an external programmer or BIOS flashback.
+#
+# `uefi_capsule` and `uefi_dbx` stage a payload to the EFI system partition. On
+# Unraid that is the removable USB stick holding the OS and array configuration,
+# and a mis-staged capsule leaves it unbootable.
+#
+# `mtd` was added after deploying to a Proxmox host, which exposed
+# `Internal SPI Controller (BIOS)` as `updatable`. It writes the SPI flash chip
+# directly, reaching the same silicon as a capsule update while bypassing the
+# ESP entirely -- so blocking only the capsule path was not blocking BIOS
+# writes, it was blocking one of two roads to them. The first deployment target
+# had no mtd devices, which is why neither the tests nor that deployment
+# surfaced it.
 #
 # The Docker image also disables uefi_capsule in its baked /etc/fwupd/fwupd.conf.
 # This check exists because that file is a property of the image, not of the
 # application: an LXC or bare-metal install uses the host's fwupd configuration,
-# where the plugin is live. Enforcing it here means the guarantee holds on every
-# deployment target and can be tested without fwupd present at all.
-BLOCKED_PLUGINS = frozenset({"uefi_capsule", "uefi_dbx"})
+# where those plugins are live. Enforcing it here means the guarantee holds on
+# every deployment target and can be tested without fwupd present at all.
+BLOCKED_PLUGINS = frozenset({"uefi_capsule", "uefi_dbx", "mtd"})
 
 
 @dataclass(frozen=True)
@@ -63,8 +74,9 @@ def evaluate(device: Device, *, enabled: bool) -> Permission:
             flashable=False,
             is_storage=is_storage,
             reason=(
-                f"The {plugin} plugin stages firmware to the EFI system partition, which "
-                "this tool never writes to. Use your system's own firmware update path."
+                f"The {plugin} plugin writes system firmware. This tool never does that: "
+                "a failed write costs the motherboard, not a peripheral. Use your "
+                "system's own firmware update path."
             ),
         )
     if not device.updatable:

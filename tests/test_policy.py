@@ -85,13 +85,22 @@ def test_there_is_no_allowlist_left_to_get_wrong():
     assert not hasattr(policy, "RUNTIME_SAFE_PLUGINS")
 
 
-def test_esp_staging_plugins_are_never_flashable():
+def test_system_firmware_plugins_are_never_flashable():
     """Independent of the Docker image's fwupd.conf, which does not exist on an
     LXC or bare-metal install where the host's fwupd config is live."""
-    for plugin in ("uefi_capsule", "uefi_dbx"):
+    for plugin in ("uefi_capsule", "uefi_dbx", "mtd"):
         perm = evaluate(device(Plugin=plugin, Flags=["updatable"]), enabled=True)
         assert perm.flashable is False, plugin
-        assert "EFI system partition" in perm.reason
+        assert "system firmware" in perm.reason
+
+
+def test_mtd_bios_device_is_refused():
+    """Regression. A Proxmox host exposed 'Internal SPI Controller (BIOS)' as
+    updatable via mtd, which writes the SPI flash chip directly and so reaches
+    the motherboard without going near the ESP. Blocking only the capsule path
+    left this road open."""
+    bios = device(Plugin="mtd", Name="Internal SPI Controller (BIOS)", Flags=["updatable"])
+    assert evaluate(bios, enabled=True).flashable is False
 
 
 def test_esp_block_beats_the_updatable_flag():

@@ -12,7 +12,7 @@
 #
 # Environment (all optional):
 #   CTID        container id                  (default: next free)
-#   HOSTNAME    container hostname            (default fwupd-webui)
+#   CT_HOSTNAME container hostname            (default fwupd-webui)
 #   STORAGE     storage for the rootfs        (default local-lvm)
 #   DISK_GB     rootfs size in GB             (default 4)
 #   CORES       cpu cores                     (default 1)
@@ -22,7 +22,9 @@
 #   ENABLE_FLASHING  true to allow writes     (default false)
 set -euo pipefail
 
-HOSTNAME="${HOSTNAME:-fwupd-webui}"
+# Not HOSTNAME: that is already set in the invoking shell, so ${HOSTNAME:-...}
+# silently names the container after the Proxmox host itself.
+CT_HOSTNAME="${CT_HOSTNAME:-fwupd-webui}"
 DISK_GB="${DISK_GB:-4}"
 CORES="${CORES:-1}"
 RAM_MB="${RAM_MB:-512}"
@@ -89,7 +91,7 @@ fi
 
 log "creating container $CTID"
 pct create "$CTID" "$TEMPLATE_STORAGE:vztmpl/$TEMPLATE" \
-    --hostname "$HOSTNAME" \
+    --hostname "$CT_HOSTNAME" \
     --cores "$CORES" \
     --memory "$RAM_MB" \
     --rootfs "$STORAGE:$DISK_GB" \
@@ -145,7 +147,7 @@ cat <<DONE
 $(log "done")
 
   UI:        http://${IP:-<container-ip>}:$PORT/
-  Container: $CTID ($HOSTNAME)
+  Container: $CTID ($CT_HOSTNAME)
   Config:    pct exec $CTID -- editor /etc/fwupd-webui/env
   Logs:      pct exec $CTID -- journalctl -u fwupd-webui -f
 
