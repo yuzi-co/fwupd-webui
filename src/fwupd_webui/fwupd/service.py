@@ -44,6 +44,24 @@ class Inventory:
     flashing_enabled: bool = False
 
 
+def _dedupe_versions(releases: list[Release]) -> list[Release]:
+    """Collapse releases that repeat a version, keeping the first.
+
+    fwupd can offer the same version more than once when it appears in several
+    remotes; the synthetic test device reports 1.2.4 twice. Listing it twice
+    with an identical changelog reads as a UI fault, and picking between two
+    identical entries is a choice nobody can make meaningfully.
+    """
+    seen: set[str] = set()
+    unique: list[Release] = []
+    for release in releases:
+        if release.version in seen:
+            continue
+        seen.add(release.version)
+        unique.append(release)
+    return unique
+
+
 class FwupdService:
     """Orchestrates fwupdtool calls and owns the two rules that keep it safe.
 
@@ -112,7 +130,7 @@ class FwupdService:
 
         releases_by_id = {d.device_id: d.releases for d in updated}
         views = [
-            DeviceView(device=d, available=list(releases_by_id.get(d.device_id, [])))
+            DeviceView(device=d, available=_dedupe_versions(releases_by_id.get(d.device_id, [])))
             for d in devices
         ]
         views.sort(key=lambda v: (not v.has_update, v.device.display_name.lower()))

@@ -177,3 +177,38 @@ async def test_metadata_status_reports_age(tmp_path, config):
     inv = await service.inventory()
     assert inv.metadata.age_seconds == pytest.approx(3600, abs=1)
     assert inv.metadata.stale is False
+
+
+async def test_duplicate_release_versions_are_collapsed(tmp_path):
+    """Real fwupd returned 1.2.4 twice for the synthetic device, and the UI
+    listed it twice with identical changelogs."""
+    from fwupd_webui.config import Config
+    from fwupd_webui.fwupd.models import Device
+    from fwupd_webui.fwupd.service import FwupdService
+
+    payload = {
+        "DeviceId": "d1",
+        "Name": "Webcam",
+        "Plugin": "test",
+        "Flags": ["updatable"],
+        "Releases": [
+            {"Version": "1.2.4"},
+            {"Version": "1.2.3"},
+            {"Version": "1.2.4"},
+        ],
+    }
+
+    class Cli:
+        def get_devices(self):
+            return [Device.model_validate(payload)]
+
+        def get_updates(self):
+            return [Device.model_validate(payload)]
+
+        def version(self):
+            return "2.1.7"
+
+    svc = FwupdService(Cli(), Config.from_env({}), tmp_path)
+    inv = await svc.inventory()
+    versions = [r.version for r in inv.devices[0].available]
+    assert versions == ["1.2.4", "1.2.3"], versions

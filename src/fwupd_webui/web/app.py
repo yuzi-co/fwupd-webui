@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import html
+import re
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -12,6 +14,30 @@ from fwupd_webui.web.api_routes import api_router
 from fwupd_webui.web.routes import router
 
 WEB_DIR = Path(__file__).parent
+
+
+_TAG_RE = re.compile(r"<[^>]+>")
+_BLOCK_RE = re.compile(r"</(p|li|ul|ol|div)\s*>", re.IGNORECASE)
+_ITEM_RE = re.compile(r"<li\s*>", re.IGNORECASE)
+
+
+def plain_text(markup: str | None) -> str:
+    """Flatten fwupd's XHTML release descriptions into plain text.
+
+    Vendor-supplied `Description` fields contain real markup (<p>, <ul>, <li>).
+    Rendering them escaped shows the tags to the user; rendering them with
+    `| safe` would hand vendor strings straight into the page. Stripping to
+    text keeps them readable and keeps the autoescaping guarantee intact --
+    whatever comes out of here is still escaped by Jinja on the way in.
+    """
+    if not markup:
+        return ""
+    text = _ITEM_RE.sub("\n• ", markup)
+    text = _BLOCK_RE.sub("\n", text)
+    text = _TAG_RE.sub("", text)
+    text = html.unescape(text)
+    lines = [line.strip() for line in text.splitlines()]
+    return "\n".join(line for line in lines if line).strip()
 
 
 def metadata_age(status: MetadataStatus) -> str:
@@ -30,6 +56,7 @@ def create_app(service, config: Config) -> FastAPI:
 
     templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
     templates.env.filters["metadata_age"] = metadata_age
+    templates.env.filters["plain_text"] = plain_text
 
     app.state.service = service
     app.state.config = config

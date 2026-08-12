@@ -22,8 +22,16 @@ async def start_flash(
         await service.start_flash(device_id, version, operation=operation, typed_name=confirm_name)
     except (PermissionError, LookupError, RuntimeError) as exc:
         # A refusal is an expected outcome, not a server error.
+        #
+        # This is a full page, not the banner fragment. The confirm step is a
+        # plain form POST, so the browser navigates -- returning a fragment left
+        # the user on a blank white page with one unstyled line and no way back,
+        # on the most likely error path there is: mistyping the device name.
         return templates.TemplateResponse(
-            request=request, name="_banner.html", context={"message": str(exc)}
+            request=request,
+            name="flash_refused.html",
+            context={"message": str(exc), "inventory": await service.cached_inventory()},
+            status_code=400,
         )
     return RedirectResponse("/flash", status_code=303)
 
