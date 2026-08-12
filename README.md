@@ -107,17 +107,31 @@ the Docker image ships 2.1.x, which is a device-coverage difference rather than 
 
 ## Requirements
 
-Whatever the deployment, fwupd needs three things from the host:
+**Under Docker, `--privileged` is the requirement.** Everything else is secondary.
+Measured on a real host (fwupd 2.1.7, 8 enumerable devices):
+
+| Configuration | Devices found |
+| --- | --- |
+| `--privileged` | **8** |
+| `--cap-add=ALL` + seccomp and AppArmor unconfined + all mounts | 2 |
+| all three mounts, not privileged | 2 |
+| plain container | 2 |
+
+The two that always appear are the CPU and the display, neither of which needs hardware
+access. Nothing short of `--privileged` reaches the disks, and explicit
+`--device-cgroup-rule` sets make it worse, not better — see
+[Why privileged](#why-privileged).
+
+The bind mounts below are what a privileged container already gets, so under Docker they
+are belt-and-braces rather than load-bearing. They are still worth passing: other
+runtimes are not Docker, and the Proxmox LXC does need its `/dev` and `/run/udev` binds
+declared explicitly.
 
 | Path | Why |
 | --- | --- |
 | `/sys` | fwupd reads sysfs attributes |
 | `/dev` | NVMe, SCSI generic and MTD ioctls |
-| `/run/udev` | fwupd enumerates through the udev database |
-
-`/run/udev` is the one that bites. Without it enumeration returns a nearly empty device
-list rather than an error, which looks like a broken install. The UI has a diagnostic
-screen for exactly this case.
+| `/run/udev` | fwupd's udev database, when the runtime does not provide one |
 
 ### Why privileged
 
@@ -126,7 +140,12 @@ ioctls, sysfs attributes. That needs privileges a normal container does not have
 Proxmox LXC is privileged with full device access for the same reason — that is the LXC
 equivalent of `--privileged`, and worth treating with the same care as root on the host.
 
-Narrowing this to an explicit capability set is a planned improvement.
+**Narrowing this was attempted and does not work.** Measured against a real host:
+`--cap-add=ALL`, seccomp and AppArmor unconfined, and every bind mount still finds only
+2 of 8 devices. Adding `--device-cgroup-rule` sets drops it to 0, because specifying
+rules replaces Docker's defaults rather than extending them. Whatever `--privileged`
+does that matters here is not reachable through capabilities. This is recorded as a
+measured dead end rather than a pending improvement.
 
 ### Flashing firmware
 
@@ -243,10 +262,10 @@ curl -sf http://host:8099/api/status >/dev/null && echo ok || echo unhealthy
 
 ## Troubleshooting
 
-**No devices listed.** The UI shows a diagnostic page for this case listing which
-required mounts are visible. The usual cause is a missing `/run/udev` mount — fwupd
-enumerates through the udev database and returns an empty list without it, rather
-than an error.
+**Only one or two devices listed.** Almost always a missing `--privileged`. A
+non-privileged container still finds the CPU and the display, so the UI looks like it is
+working while every disk is absent — which is more confusing than an empty list. The UI
+has a diagnostic page showing which mounts are visible.
 
 **No devices in an LXC.** Check the udev bind mount landed:
 `pct exec <ctid> -- ls /run/udev/data | head`. An unprivileged LXC cannot enumerate
