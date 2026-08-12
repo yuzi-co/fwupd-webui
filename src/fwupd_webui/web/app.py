@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 
 from fwupd_webui.config import Config
 from fwupd_webui.fwupd.service import MetadataStatus
+from fwupd_webui.web.api_routes import api_router
 from fwupd_webui.web.routes import router
 
 WEB_DIR = Path(__file__).parent
@@ -36,6 +37,10 @@ def create_app(service, config: Config) -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
     app.include_router(router)
+
+    # Always registered. Reporting is read-only and has nothing to do with the
+    # write path, so monitoring works whether or not flashing is enabled.
+    app.include_router(api_router)
 
     if config.enable_flashing:
         # Registered only when explicitly enabled, so POST /flash is a genuine

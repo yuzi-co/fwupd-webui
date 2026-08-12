@@ -143,6 +143,61 @@ by re-reading the device after the flash. This tool never reboots the host.
 **Leaving it on.** Nothing expires the flag. Turning it off again is a container
 restart, and that is the only thing keeping the outermost control meaningful.
 
+## Monitoring
+
+`GET /api/status` returns everything a check needs in one request. Always available,
+regardless of whether flashing is enabled.
+
+```bash
+curl -s http://host:8099/api/status | jq
+```
+
+```json
+{
+  "status": "ok",
+  "fwupd_version": "2.1.7",
+  "flashing_enabled": false,
+  "devices": { "total": 8, "updatable": 5, "with_updates": 1 },
+  "updates": [
+    {
+      "device_id": "abc123",
+      "name": "Samsung SSD 990 PRO",
+      "vendor": "Samsung",
+      "plugin": "nvme",
+      "current_version": "4B2QJXD7",
+      "available_version": "5B2QJXD7",
+      "urgency": "high",
+      "needs_reboot": true
+    }
+  ],
+  "metadata": { "last_refresh": 1786500000.0, "age_seconds": 3600.0, "stale": false, "error": null },
+  "flash": null
+}
+```
+
+`status` is `ok`, `degraded` (metadata stale or a refresh failure) or `error` (fwupd
+unreachable, or the last flash failed). The endpoint returns **HTTP 503** when `status`
+is `error`, so a plain uptime probe catches a broken fwupd without anyone configuring a
+JSON path; `ok` and `degraded` both return 200.
+
+`updates` is always present and is `[]` when there is nothing pending, so a check can
+read it unconditionally. `flash` is `null` until a flash has run, then reports phase,
+percent and outcome — and unlike the HTML routes it never redirects during a flash.
+
+**Polling.** Enumeration issues real commands to real disks, so responses are cached for
+`FWUPD_WEBUI_API_CACHE_SECONDS` (default 60). Polling faster than that is harmless — it
+serves the cached snapshot rather than re-reading the hardware.
+
+Useful checks:
+
+```bash
+# any firmware updates pending?
+curl -s http://host:8099/api/status | jq '.devices.with_updates'
+
+# healthy?
+curl -sf http://host:8099/api/status >/dev/null && echo ok || echo unhealthy
+```
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -152,6 +207,7 @@ restart, and that is the only thing keeping the outermost control meaningful.
 | `FWUPD_WEBUI_REFRESH_INTERVAL_HOURS` | `24` | Age above which startup refetches LVFS metadata |
 | `FWUPD_WEBUI_TIMEOUT_SECONDS` | `120` | Hard timeout per fwupdtool invocation |
 | `FWUPD_WEBUI_INSTALL_TIMEOUT_SECONDS` | `1800` | Hard timeout for a single flash |
+| `FWUPD_WEBUI_API_CACHE_SECONDS` | `60` | How long `/api/status` serves a cached snapshot |
 | `FWUPD_WEBUI_LVFS_REMOTE` | `lvfs` | `lvfs` or `lvfs-testing` |
 | `FWUPD_WEBUI_LOG_LEVEL` | `info` | Log verbosity |
 

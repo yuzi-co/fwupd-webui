@@ -67,3 +67,11 @@ def test_install_timeout_defaults_to_thirty_minutes():
 def test_install_timeout_is_configurable():
     cfg = Config.from_env({"FWUPD_WEBUI_INSTALL_TIMEOUT_SECONDS": "600"})
     assert cfg.install_timeout_seconds == 600
+
+
+def test_api_cache_defaults_to_a_minute():
+    assert Config.from_env({}).api_cache_seconds == 60
+
+
+def test_api_cache_is_configurable():
+    assert Config.from_env({"FWUPD_WEBUI_API_CACHE_SECONDS": "5"}).api_cache_seconds == 5
