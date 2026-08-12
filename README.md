@@ -1,5 +1,9 @@
 # fwupd-webui
 
+[![CI](https://github.com/yuzi-co/fwupd-webui/actions/workflows/ci.yml/badge.svg)](https://github.com/yuzi-co/fwupd-webui/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/yuzi-co/fwupd-webui)](https://github.com/yuzi-co/fwupd-webui/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A web UI for [fwupd](https://fwupd.org). It lists every device fwupd can enumerate —
 NVMe drives, SATA disks, HBAs, network cards, Thunderbolt controllers, docks, BIOS flash
 — with current firmware versions and any updates available from LVFS.
@@ -31,13 +35,7 @@ machine.</sub>
 
 ### Docker, anywhere
 
-**No image is published yet** — build it yourself:
-
 ```bash
-git clone https://github.com/yuzi-co/fwupd-webui.git
-cd fwupd-webui
-docker build -t fwupd-webui:latest .
-
 docker run -d --name fwupd-webui \
   --privileged \
   -p 8099:8099 \
@@ -45,25 +43,20 @@ docker run -d --name fwupd-webui \
   -v /dev:/dev \
   -v /run/udev:/run/udev:ro \
   -v fwupd-metadata:/var/lib/fwupd \
-  fwupd-webui:latest
+  ghcr.io/yuzi-co/fwupd-webui:latest
 ```
 
-Or `docker compose up -d` with the bundled [`docker-compose.yml`](docker-compose.yml),
-which builds from source.
+Or `docker compose up -d` with the bundled [`docker-compose.yml`](docker-compose.yml).
 
-To run it on a machine that cannot build (an Unraid box, say), build elsewhere and ship
-the image over SSH:
-
-```bash
-docker save fwupd-webui:latest | gzip -1 | ssh root@HOST 'gunzip | docker load'
-```
+Images are `amd64` only. Pin a version rather than tracking `latest` if you would
+rather choose when the firmware tooling under you changes:
+`ghcr.io/yuzi-co/fwupd-webui:v0.1.0`.
 
 ### Unraid
 
 The template at [`unraid/fwupd-webui.xml`](unraid/fwupd-webui.xml) sets up the mounts,
-the port and the flashing toggle. **It expects a published image, which does not exist
-yet**, so for now either edit its `<Repository>` to a locally loaded tag, or build
-elsewhere and `docker load` onto the box using the SSH one-liner above.
+the port and the flashing toggle. Add it as a template, or point Community Applications
+at this repository.
 
 Unraid runs Slackware from a USB stick with the OS in RAM and no persistent package
 manager, so a container is the only practical route there.
@@ -365,12 +358,6 @@ test asserts the plugin reports itself disabled.
 - [Phase A design — flashing](docs/specs/2026-08-12-fwupd-webui-phase-a-design.md)
 - [Phase A implementation plan](docs/plans/2026-08-12-fwupd-webui-phase-a.md) — historical; records
   five assumptions that real fwupd and real hardware disproved
-
-## Status
-
-Not yet released. No container image is published, and the version is `0.1.0`
-unreleased. Everything here works — both deployment paths that build from source are
-verified on real hardware — but installing from a registry is not yet possible.
 
 ## License
 
