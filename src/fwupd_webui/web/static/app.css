@@ -36,3 +36,10 @@ td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-al
 .flash-actions { margin-top: 0.4rem; }
 .phase { font-size: 1.2rem; }
 .log { background: #18181b; color: #e4e4e7; padding: 0.5rem; overflow-x: auto; white-space: pre-wrap; }
+.danger {
+  border: 2px solid #b91c1c;
+  background: #fef2f2;
+  color: #7f1d1d;
+  padding: 0.6rem;
+  margin: 0.5rem 0;
+}

@@ -46,16 +46,21 @@ exist — `POST /flash` is a genuine 404, not a handler that refuses.
 
 With it on, four things still stand between a click and a write:
 
-1. Only `nvme` and `thunderbolt` devices flash directly. Everything else, including
-   `ata`, requires typing the device name exactly to confirm.
+1. Only peripherals flash directly — `thunderbolt`, `logitech_hidpp`, `wacom_usb`,
+   `wacom_raw`. **Every storage device** (`nvme`, `ata`, `scsi`, `emmc`) requires
+   typing the device name exactly, and shows a prominent data-loss warning. So does
+   any plugin not on the list, so a plugin a future fwupd adds fails safe.
 2. Policy is enforced server-side. A disabled button is a suggestion; the server
    refusing the POST is the control.
 3. There is no cancel. Killing a flash mid-write can leave partially written
    firmware, so a job runs to completion or fails on its own.
 4. `uefi_capsule` remains disabled in the image, so BIOS updates stay unreachable.
 
-**Array drives.** On a NAS the `ata` devices are usually the array. Rewriting drive
-firmware under a live array risks the array, not just the drive. Stop the array first.
+**Storage devices.** The hazard is not which plugin drives a disk, it is that the disk
+holds data something is using. On a NAS the `ata` devices are usually the array and the
+`nvme` is usually the cache pool — which is where Docker itself lives. All storage is
+therefore treated as the dangerous case regardless of plugin. Stop the array or unmount
+the device before flashing it.
 
 **Staged firmware.** Most devices report `needs-reboot`, meaning the firmware is
 written but becomes live only after a reboot. The result screen says which happened,

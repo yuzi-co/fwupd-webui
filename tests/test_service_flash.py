@@ -7,7 +7,7 @@ from fwupd_webui.fwupd.models import Device
 from fwupd_webui.fwupd.service import FwupdService
 
 
-def make_device(plugin="nvme", name="NVMe SSD", version="1.0"):
+def make_device(plugin="logitech_hidpp", name="Unifying Receiver", version="1.0"):
     return Device.model_validate(
         {
             "DeviceId": "dev-1",
@@ -50,7 +50,7 @@ class StubCli:
         self.installs.append((target, device_id, allow_older, allow_reinstall))
 
 
-def service(tmp_path, *, enabled=True, plugin="nvme"):
+def service(tmp_path, *, enabled=True, plugin="logitech_hidpp"):
     cli = StubCli([make_device(plugin=plugin)])
     config = Config.from_env({"FWUPD_WEBUI_ENABLE_FLASHING": "true" if enabled else "false"})
     svc = FwupdService(cli, config, tmp_path)
@@ -80,7 +80,7 @@ async def test_blocked_plugin_is_refused_without_the_typed_name(tmp_path):
 
 async def test_blocked_plugin_proceeds_with_the_correct_typed_name(tmp_path):
     svc = service(tmp_path, plugin="ata")
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name="NVMe SSD")
+    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name="Unifying Receiver")
     assert job.status is FlashStatus.SUCCEEDED
 
 

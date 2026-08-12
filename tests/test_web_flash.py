@@ -27,7 +27,12 @@ class FakeService:
 
     async def inventory(self):
         device = Device.model_validate(
-            {"DeviceId": "dev-1", "Name": "NVMe SSD", "Plugin": "nvme", "Flags": ["updatable"]}
+            {
+                "DeviceId": "dev-1",
+                "Name": "Unifying Receiver",
+                "Plugin": "logitech_hidpp",
+                "Flags": ["updatable"],
+            }
         )
         return Inventory(
             devices=[DeviceView(device=device, available=[])],
@@ -41,7 +46,7 @@ class FakeService:
 
     async def start_flash(self, device_id, version, *, operation, typed_name):
         self.started.append((device_id, version, operation, typed_name))
-        job = FlashJob(device_id=device_id, device_name="NVMe SSD", version=version)
+        job = FlashJob(device_id=device_id, device_name="Unifying Receiver", version=version)
         job.status = FlashStatus.SUCCEEDED
         self.flash_manager.job = job
         return job
@@ -58,7 +63,7 @@ def client_for(service, *, enabled=True) -> TestClient:
 
 
 def running_job() -> FlashJob:
-    job = FlashJob(device_id="dev-1", device_name="NVMe SSD", version="2.0")
+    job = FlashJob(device_id="dev-1", device_name="Unifying Receiver", version="2.0")
     job.status = FlashStatus.RUNNING
     return job
 
@@ -144,14 +149,14 @@ def test_progress_fragment_polls_itself_while_running():
 
 
 def test_progress_fragment_stops_polling_once_finished():
-    done = FlashJob(device_id="dev-1", device_name="NVMe SSD", version="2.0")
+    done = FlashJob(device_id="dev-1", device_name="Unifying Receiver", version="2.0")
     done.status = FlashStatus.SUCCEEDED
     body = client_for(FakeService(job=done)).get("/flash/progress").text
     assert "every 1s" not in body
 
 
 def test_staged_firmware_is_called_out():
-    done = FlashJob(device_id="dev-1", device_name="NVMe SSD", version="2.0")
+    done = FlashJob(device_id="dev-1", device_name="Unifying Receiver", version="2.0")
     done.status = FlashStatus.SUCCEEDED
     done.staged = True
     done.installed_version = "1.0"
@@ -161,7 +166,7 @@ def test_staged_firmware_is_called_out():
 
 
 def test_failed_job_shows_the_phase_it_reached():
-    failed = FlashJob(device_id="dev-1", device_name="NVMe SSD", version="2.0")
+    failed = FlashJob(device_id="dev-1", device_name="Unifying Receiver", version="2.0")
     failed.status = FlashStatus.FAILED
     failed.phase = "Verifying"
     failed.error = "device is locked"
@@ -171,7 +176,7 @@ def test_failed_job_shows_the_phase_it_reached():
 
 
 def test_dismiss_clears_the_job():
-    done = FlashJob(device_id="dev-1", device_name="NVMe SSD", version="2.0")
+    done = FlashJob(device_id="dev-1", device_name="Unifying Receiver", version="2.0")
     done.status = FlashStatus.SUCCEEDED
     service = FakeService(job=done)
     client_for(service).post("/flash/dismiss", follow_redirects=False)
