@@ -83,3 +83,20 @@ def test_there_is_no_allowlist_left_to_get_wrong():
     import fwupd_webui.fwupd.policy as policy
 
     assert not hasattr(policy, "RUNTIME_SAFE_PLUGINS")
+
+
+def test_esp_staging_plugins_are_never_flashable():
+    """Independent of the Docker image's fwupd.conf, which does not exist on an
+    LXC or bare-metal install where the host's fwupd config is live."""
+    for plugin in ("uefi_capsule", "uefi_dbx"):
+        perm = evaluate(device(Plugin=plugin, Flags=["updatable"]), enabled=True)
+        assert perm.flashable is False, plugin
+        assert "EFI system partition" in perm.reason
+
+
+def test_esp_block_beats_the_updatable_flag():
+    """A capsule device advertising itself as updatable must still be refused."""
+    perm = evaluate(
+        device(Plugin="uefi_capsule", Flags=["updatable", "needs-reboot"]), enabled=True
+    )
+    assert perm.flashable is False
