@@ -4,6 +4,14 @@ Files staged for submission to third-party app catalogues. They live here so the
 are versioned and reviewable alongside the code they install; the catalogues
 themselves need them copied into their own repositories.
 
+Drafted submission text:
+
+- [`SUBMISSION-proxmox.md`](SUBMISSION-proxmox.md)
+- [`SUBMISSION-unraid.md`](SUBMISSION-unraid.md)
+
+Both require a human to send them, and the Proxmox one has a self-review checkbox that
+only the submitter can honestly tick.
+
 ## Proxmox — community-scripts
 
 New scripts go to **[ProxmoxVED](https://github.com/community-scripts/ProxmoxVED)**,
@@ -24,9 +32,16 @@ settings closes that gap. Their own `build.func` already emits the required devi
 access for privileged containers via `configure_usb_passthrough()`, so no custom LXC
 configuration is needed.
 
-**Not end-to-end tested.** `ct/fwupd-webui.sh` fetches its installer from the
-community-scripts repository by name, so it cannot run until it lives there. The install
-logic it performs is the same as `deploy/install.sh`, which is tested, and the privileged
+**Written against `AGENTS.md`, not against example scripts.** The first draft copied an
+existing script in ProxmoxVE and was wrong in two ways their guidelines catch: the
+`build.func` sourcing block has changed (the engine now comes from
+`community-scripts/core`), and the JSON needs `repository`, `architectures` and
+`platforms`. Their PR template requires disclosing AI assistance and asserts the scripts
+were built from `AGENTS.md`, so both files were rewritten against it.
+
+**Not end-to-end tested.** `ct/fwupd-webui.sh` resolves its installer by name from the
+community-scripts repositories, so it cannot run until it lives in one. The install logic
+it performs is the same as `deploy/install.sh`, which is tested, and the privileged
 container assumption is confirmed on a real Proxmox host. ProxmoxVED exists for exactly
 this validation step.
 
