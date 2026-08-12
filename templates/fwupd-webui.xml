@@ -44,6 +44,15 @@ First release. Firmware inventory with optional flashing, off by default.
   <Screenshot>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/docs/screenshots/device-detail.png</Screenshot>
   <Screenshot>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/docs/screenshots/confirm.png</Screenshot>
 
+  <!-- The base image is a rolling snapshot pin, so what fwupd version you get can
+       move with :latest. Pinning is offered for anyone who would rather choose when
+       the firmware tooling underneath them changes. -->
+  <DefaultTagDescription>Latest release. Tracks new versions as they ship.</DefaultTagDescription>
+  <Branch>
+    <Tag>v0.1.1</Tag>
+    <TagDescription>Pinned to v0.1.1. Does not move.</TagDescription>
+  </Branch>
+
   <Config Name="WebUI Port" Target="8099" Default="8099" Mode="tcp"
           Description="Port for the web interface" Type="Port" Display="always"
           Required="true" Mask="false">8099</Config>
@@ -80,4 +89,12 @@ First release. Firmware inventory with optional flashing, off by default.
   <Config Name="Flash timeout (seconds)" Target="FWUPD_WEBUI_INSTALL_TIMEOUT_SECONDS"
           Default="1800" Description="Hard timeout for a single firmware write"
           Type="Variable" Display="advanced" Required="false" Mask="false">1800</Config>
+
+  <Config Name="API cache (seconds)" Target="FWUPD_WEBUI_API_CACHE_SECONDS"
+          Default="60" Description="How long /api/status serves a cached snapshot. Enumeration issues real commands to real disks, so a monitor polling faster than this gets the cached copy rather than re-reading the hardware."
+          Type="Variable" Display="advanced" Required="false" Mask="false">60</Config>
+
+  <Config Name="Log level" Target="FWUPD_WEBUI_LOG_LEVEL" Default="info"
+          Description="Log verbosity: debug, info, warning or error"
+          Type="Variable" Display="advanced" Required="false" Mask="false">info</Config>
 </Container>

@@ -18,4 +18,7 @@ Support is via GitHub issues.
   </Profile>
   <Icon>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/icon.svg</Icon>
   <WebPage>https://github.com/yuzi-co/fwupd-webui</WebPage>
+  <Photo>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/docs/screenshots/inventory.png</Photo>
+  <Photo>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/docs/screenshots/device-detail.png</Photo>
+  <Photo>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/docs/screenshots/confirm.png</Photo>
 </CommunityApplications>
