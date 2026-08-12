@@ -8,13 +8,21 @@
   <Support>https://github.com/yuzi-co/fwupd-webui/issues</Support>
   <Project>https://github.com/yuzi-co/fwupd-webui</Project>
   <Overview>
-Read-only firmware inventory for your server. Lists every device fwupd can see
-    — NVMe drives, HBAs, network cards, Thunderbolt controllers, docks — with its
-    current firmware version and any updates available from LVFS.
+Firmware inventory and updates for your server. Lists every device fwupd can see
+    — NVMe drives, SATA disks, HBAs, network cards, Thunderbolt controllers, docks —
+    with its current firmware version and any updates available from LVFS.
 
-    This container does not flash anything. It requires privileged mode and host
-    access to /sys, /dev and /run/udev in order to enumerate hardware.
+    Read-only by default. Firmware flashing is off unless you set
+    FWUPD_WEBUI_ENABLE_FLASHING to true; while it is off, the flash routes do not
+    exist at all. Even when enabled, every flash requires typing the device name to
+    confirm, storage devices carry a data-loss warning, and system firmware
+    (BIOS, UEFI capsule, SPI flash) is refused outright.
+
+    Requires privileged mode. Enumerating firmware means issuing NVMe admin commands
+    and SCSI ioctls, which an unprivileged container cannot do — without it you will
+    see only the CPU and display.
   </Overview>
+  <TemplateURL>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/unraid/fwupd-webui.xml</TemplateURL>
   <Category>Tools: Utilities:</Category>
   <WebUI>http://[IP]:[PORT:8099]/</WebUI>
   <Icon>https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/unraid/icon.png</Icon>
@@ -32,7 +40,7 @@ Read-only firmware inventory for your server. Lists every device fwupd can see
           Type="Path" Display="advanced" Required="true" Mask="false">/dev</Config>
 
   <Config Name="udev database" Target="/run/udev" Default="/run/udev" Mode="ro"
-          Description="Required: without this the device list comes back empty"
+          Description="fwupd's udev database. Harmless to leave enabled."
           Type="Path" Display="advanced" Required="true" Mask="false">/run/udev</Config>
 
   <Config Name="Metadata cache" Target="/var/lib/fwupd"
@@ -49,7 +57,7 @@ Read-only firmware inventory for your server. Lists every device fwupd can see
           Required="false" Mask="false">lvfs</Config>
 
   <Config Name="Enable flashing" Target="FWUPD_WEBUI_ENABLE_FLASHING" Default="false"
-          Description="Set to true to allow writing firmware to devices. Leave false for a read-only inventory. Enabling this permits irreversible writes to hardware. NVMe and Thunderbolt devices update directly; everything else, including array drives, requires typing the device name to confirm. Stop the array before flashing any drive."
+          Description="Set to true to allow writing firmware to devices. Leave false for a read-only inventory. Enabling this permits irreversible writes to hardware. Every flash requires typing the device name to confirm, and storage devices show a data-loss warning. Stop the array before flashing any array drive."
           Type="Variable" Display="always" Required="false" Mask="false">false</Config>
 
   <Config Name="Flash timeout (seconds)" Target="FWUPD_WEBUI_INSTALL_TIMEOUT_SECONDS"
