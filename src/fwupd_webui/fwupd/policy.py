@@ -16,21 +16,39 @@ from fwupd_webui.fwupd.models import Device
 # Enumerated from `fwupdtool get-plugins` on fwupd 2.1.7, not guessed.
 STORAGE_PLUGINS = frozenset({"ata", "emmc", "nvme", "scsi"})
 
-# Plugins this application refuses to flash through, ever: every route to system
-# firmware. Failure here does not cost a peripheral, it costs the motherboard,
-# and recovery needs an external programmer or BIOS flashback.
+# Plugins this application refuses to flash through, ever. Two different hazards
+# live in this set, and collapsing them into one sentence about motherboards is
+# how this comment was wrong for a while.
 #
-# `uefi_capsule` and `uefi_dbx` stage a payload to the EFI system partition. On
-# Unraid that is the removable USB stick holding the OS and array configuration,
-# and a mis-staged capsule leaves it unbootable.
+# `uefi_capsule` and `mtd` are the firmware writes. A capsule is staged to the
+# EFI system partition and applied by the firmware flashing itself on the next
+# boot -- on Unraid that partition is the removable USB stick holding the OS and
+# array configuration, so a mis-staged capsule leaves it unbootable. `mtd` writes
+# the SPI flash chip directly, reaching the same silicon without the capsule
+# path's mediation. It was added after deploying to a Proxmox host, which exposed
+# `Internal SPI Controller (BIOS)` as updatable: blocking only the capsule was not
+# blocking BIOS writes, it was blocking one of two roads to them. The first
+# deployment target had no mtd devices, which is why neither the tests nor that
+# deployment surfaced it. Failure either way costs the motherboard, and recovery
+# needs BIOS flashback or an external programmer.
 #
-# `mtd` was added after deploying to a Proxmox host, which exposed
-# `Internal SPI Controller (BIOS)` as `updatable`. It writes the SPI flash chip
-# directly, reaching the same silicon as a capsule update while bypassing the
-# ESP entirely -- so blocking only the capsule path was not blocking BIOS
-# writes, it was blocking one of two roads to them. The first deployment target
-# had no mtd devices, which is why neither the tests nor that deployment
-# surfaced it.
+# `uefi_dbx` is not a firmware write and never touches the SPI chip. It appends to
+# the UEFI Secure Boot revocation list by writing the authenticated dbx EFI
+# variable through efivarfs; fwupd consults the ESP only to check whether the new
+# list would revoke the bootloader in use, which is why the plugin reports
+# esp-not-found and clears updatable when it cannot see one. It is blocked for
+# different reasons than the two above. The append cannot be undone short of
+# clearing the Secure Boot keys -- fwupd marks the device only-version-upgrade --
+# and if the new list revokes the running bootloader, the machine stops booting
+# until someone disables Secure Boot in firmware setup. On the headless NAS and
+# hypervisor hosts this ships to, needing to walk to the machine is as bad as a
+# brick. Typing a device name proves deliberateness; it does not prove anyone can
+# reach the box.
+#
+# Keeping dbx in this set is also what makes the read-only efivars grant in
+# deploy/proxmox-lxc.sh correct. Applying a dbx update needs write access to
+# efivars, so unblocking it here would require widening that grant: the two
+# decisions have to move together.
 #
 # The Docker image also disables uefi_capsule in its baked /etc/fwupd/fwupd.conf.
 # This check exists because that file is a property of the image, not of the
@@ -38,6 +56,23 @@ STORAGE_PLUGINS = frozenset({"ata", "emmc", "nvme", "scsi"})
 # where those plugins are live. Enforcing it here means the guarantee holds on
 # every deployment target and can be tested without fwupd present at all.
 BLOCKED_PLUGINS = frozenset({"uefi_capsule", "uefi_dbx", "mtd"})
+
+# The refusal shown to the operator. dbx gets its own wording because telling
+# someone a revocation-list append costs them the motherboard is simply untrue,
+# and the real consequence -- a machine that needs physical access to recover --
+# is the one they need to hear.
+_FIRMWARE_REFUSAL = (
+    "The {plugin} plugin writes system firmware. This tool never does that: "
+    "a failed write costs the motherboard, not a peripheral. Use your "
+    "system's own firmware update path."
+)
+_DBX_REFUSAL = (
+    "The uefi_dbx plugin appends to the UEFI Secure Boot revocation list. This "
+    "tool never does that: the entries cannot be removed afterwards, and if the "
+    "new list revokes the bootloader this machine uses, it stops booting until "
+    "someone disables Secure Boot in firmware setup. Use your system's own "
+    "firmware update path."
+)
 
 
 @dataclass(frozen=True)
@@ -74,9 +109,9 @@ def evaluate(device: Device, *, enabled: bool) -> Permission:
             flashable=False,
             is_storage=is_storage,
             reason=(
-                f"The {plugin} plugin writes system firmware. This tool never does that: "
-                "a failed write costs the motherboard, not a peripheral. Use your "
-                "system's own firmware update path."
+                _DBX_REFUSAL
+                if plugin == "uefi_dbx"
+                else _FIRMWARE_REFUSAL.format(plugin=plugin)
             ),
         )
     if not device.updatable:
