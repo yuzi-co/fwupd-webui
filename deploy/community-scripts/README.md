@@ -24,7 +24,7 @@ only the submitter can honestly tick.
 > | At least 6 months old | created 2026-08-11 ❌ |
 > | 600+ GitHub stars | 0 ❌ |
 > | Actively maintained | ✅ |
-> | Official release tarballs | ✅ (v0.1.0, v0.1.1) |
+> | Official release tarballs | ✅ (v0.1.0, v0.1.1, v0.2.0) |
 >
 > A first attempt — [ProxmoxVED#2172](https://github.com/community-scripts/ProxmoxVED/pull/2172)
 > — was opened and auto-closed for missing that template section. Reopening was not
