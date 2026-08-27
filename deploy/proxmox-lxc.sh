@@ -121,6 +121,23 @@ lxc.mount.auto: proc:rw sys:rw cgroup:rw
 # and plugins that consult the udev database rather than sysfs directly.
 lxc.mount.entry: /run/udev run/udev none bind,ro,create=dir 0 0
 lxc.mount.entry: /dev dev none bind,rw,create=dir 0 0
+
+# Binding the host's /dev read-write means LXC prepares its pty devices against
+# the host's devtmpfs rather than a private one. lxc_setup_devpts_child() does
+# remove("/dev/ptmx") followed by open(O_CREAT) to build a bind-mount target,
+# and since a bind mount shares inodes, both land on the host: /dev/ptmx stops
+# being the 5:2 character device and becomes an empty regular file. Every pty
+# allocation on the host then fails -- no ssh shells, no Proxmox web console,
+# and no way back in short of recreating the node by hand. The container is
+# unaffected, so the damage is invisible from inside it. Mount propagation does
+# not help here; file creation and removal are not mount events.
+#
+# Setting pty.max to 0 makes LXC skip devpts setup entirely ("No new devpts
+# instance will be mounted since no pts devices are required"), so it never
+# touches the node. The container still gets working ptys through the bound
+# host /dev, and device enumeration is unchanged -- verified at 10 devices on a
+# J4125 host, against 2 for an unprivileged container.
+lxc.pty.max: 0
 LXCCONF
 
 log "starting container"
