@@ -159,10 +159,14 @@ With it on, four things still stand between a click and a write:
 3. There is no cancel. Killing a flash mid-write can leave partially written
    firmware, so a job runs to completion or fails on its own.
 4. **System firmware is refused outright.** `uefi_capsule`, `uefi_dbx` and `mtd` are
-   never flashable, whatever else is true of them. The first two stage to the EFI
-   system partition; `mtd` writes the SPI flash chip directly, which is how a Proxmox
-   host exposed `Internal SPI Controller (BIOS)` as updatable. A failed write there
-   costs the motherboard. The Docker image additionally disables `uefi_capsule` in its
+   never flashable, whatever else is true of them. `uefi_capsule` stages a payload to the
+   EFI system partition for the firmware to apply on the next boot; `mtd` writes the
+   SPI flash chip directly, which is how a Proxmox host exposed
+   `Internal SPI Controller (BIOS)` as updatable. A failed write either way costs the
+   motherboard. `uefi_dbx` is blocked for a different reason: it appends to the Secure
+   Boot revocation list, the append cannot be undone, and if it revokes the bootloader
+   in use the machine stops booting until someone disables Secure Boot in firmware
+   setup — physical access this tool cannot assume on a headless host. The Docker image additionally disables `uefi_capsule` in its
    baked fwupd config, but the application enforces this regardless — an LXC or native
    install uses the host's fwupd configuration, where those plugins are live.
 

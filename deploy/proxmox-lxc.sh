@@ -140,6 +140,64 @@ lxc.mount.entry: /dev dev none bind,rw,create=dir 0 0
 lxc.pty.max: 0
 LXCCONF
 
+# UEFI security databases (PK, KEK, db, dbx) live in efivarfs, which an LXC does
+# not get on its own: lxc.mount.auto hands the container a fresh sysfs, and
+# efivarfs is a separate filesystem that does not come along with it. Without it
+# fwupd enumerates 10 devices on a machine whose host sees 18, silently missing
+# every uefi_* device -- including the dbx revocation list, which is one of the
+# most commonly applied firmware updates there is.
+#
+# Bind-mounting efivarfs is necessary but not sufficient. LXC's AppArmor
+# abstraction carries "deny /sys/firmware/efi/efivars/** rwklx". That rule is
+# path-based and covers the contents rather than the directory, so listing the
+# directory succeeds while every open() inside it fails with EACCES -- the
+# devices stay missing and nothing is logged. It cannot be relaxed by adding an
+# allow, because in AppArmor a deny always wins. The profile therefore has to be
+# built from a copy of the abstraction with that single line rewritten.
+#
+# Both files are generated from the shipped policy rather than vendored, so they
+# follow upstream changes instead of freezing today's rules. The profile is
+# derived from the nesting variant because the container is created with
+# features=nesting, and setting lxc.apparmor.profile explicitly overrides
+# Proxmox's own nesting-based profile selection.
+#
+# Read is all that is granted, and all that is needed. Enumerating the uefi_*
+# devices only reads; writing efivars is the bricking vector. The application
+# refuses system firmware regardless -- policy.BLOCKED_PLUGINS covers
+# uefi_capsule, uefi_dbx and mtd -- so write access would be a capability
+# nothing here can use, with flashing enabled or not.
+AA_BASE=/etc/apparmor.d/abstractions/lxc/container-base
+AA_NEST=/etc/apparmor.d/lxc/lxc-default-with-nesting
+AA_ABS=/etc/apparmor.d/abstractions/lxc/container-base-fwupd-webui
+AA_PROFILE=/etc/apparmor.d/lxc/lxc-fwupd-webui
+AA_NAME=lxc-container-fwupd-webui
+AA_DENY='  deny /sys/firmware/efi/efivars/** rwklx,'
+
+if [ ! -d /sys/firmware/efi/efivars ]; then
+    warn "host is not UEFI-booted; skipping efivars (uefi_* devices will be unavailable)"
+elif [ ! -r "$AA_BASE" ] || [ ! -r "$AA_NEST" ]; then
+    warn "LXC AppArmor policy not found; skipping efivars (uefi_* devices will be unavailable)"
+elif ! grep -qxF "$AA_DENY" "$AA_BASE"; then
+    warn "LXC AppArmor policy has no efivars deny rule to rewrite; skipping efivars"
+else
+    log "granting read-only efivars access so fwupd can see UEFI firmware"
+    sed "s|^$(printf '%s' "$AA_DENY" | sed 's/[][\.*^$/]/\\&/g')$|  /sys/firmware/efi/efivars/** r,|" \
+        "$AA_BASE" > "$AA_ABS"
+    sed -e "s|^profile lxc-container-default-with-nesting |profile $AA_NAME |" \
+        -e "s|abstractions/lxc/container-base>|abstractions/lxc/container-base-fwupd-webui>|" \
+        "$AA_NEST" > "$AA_PROFILE"
+
+    if apparmor_parser -r /etc/apparmor.d/lxc-containers; then
+        cat >> "$CONF" <<AACONF
+lxc.mount.entry: /sys/firmware/efi/efivars sys/firmware/efi/efivars none bind,ro,optional 0 0
+lxc.apparmor.profile: $AA_NAME
+AACONF
+    else
+        rm -f "$AA_ABS" "$AA_PROFILE"
+        warn "apparmor_parser failed; keeping the default profile (uefi_* devices unavailable)"
+    fi
+fi
+
 log "starting container"
 pct start "$CTID"
 

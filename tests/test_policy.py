@@ -88,10 +88,22 @@ def test_there_is_no_allowlist_left_to_get_wrong():
 def test_system_firmware_plugins_are_never_flashable():
     """Independent of the Docker image's fwupd.conf, which does not exist on an
     LXC or bare-metal install where the host's fwupd config is live."""
-    for plugin in ("uefi_capsule", "uefi_dbx", "mtd"):
+    for plugin in ("uefi_capsule", "mtd"):
         perm = evaluate(device(Plugin=plugin, Flags=["updatable"]), enabled=True)
         assert perm.flashable is False, plugin
         assert "system firmware" in perm.reason
+
+
+def test_dbx_is_refused_but_not_described_as_a_firmware_write():
+    """dbx is blocked for a different hazard than uefi_capsule and mtd. It never
+    touches the SPI chip; it appends to the Secure Boot revocation list, the
+    append cannot be undone, and a revoked bootloader needs someone physically
+    at the machine to disable Secure Boot. Telling the operator it costs the
+    motherboard would be untrue, so the copy has to differ."""
+    perm = evaluate(device(Plugin="uefi_dbx", Flags=["updatable"]), enabled=True)
+    assert perm.flashable is False
+    assert "Secure Boot" in perm.reason
+    assert "motherboard" not in perm.reason
 
 
 def test_mtd_bios_device_is_refused():
