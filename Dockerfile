@@ -2,9 +2,14 @@
 #
 # forky carries fwupd 2.1.7 -- the current upstream release -- where Debian
 # stable (trixie) is stuck on 2.0.20 and trixie-backports offers nothing newer.
-# It is testing, not stable, so package versions do move; the snapshot pin below
-# is what makes that irrelevant. An archive timestamp is immutable, so this
-# Dockerfile resolves to identical packages on any future rebuild.
+# It is testing, not stable, so package versions do move; the two pins below are
+# what make that irrelevant. Both halves are required. An archive timestamp is
+# immutable, but debian:forky-slim is a moving tag on a testing suite, and a
+# snapshot pin on its own is not reproducible: the base was rebuilt past the
+# snapshot date, arriving with gcc-16-base 16.2.0-1 while the frozen archive's
+# libatomic1 still required 16.1.0-3. apt will not downgrade a package the base
+# image already has, so every build failed to resolve. Pin the base by digest
+# and the archive by timestamp, and bump them together.
 #
 # Alpine edge also carries fwupd 2.1.7 and builds a 331MB image against this
 # one's 472MB, but edge has no snapshot archive by construction -- its packages
@@ -15,9 +20,9 @@
 # To move fwupd forward, bump DEBIAN_SNAPSHOT to a newer timestamp deliberately,
 # then run `make integration` -- that suite exercises real fwupdtool and is what
 # catches a version bump that changes fwupd's JSON output.
-ARG DEBIAN_SNAPSHOT=20260810T000000Z
+ARG DEBIAN_SNAPSHOT=20260825T000000Z
 
-FROM debian:forky-slim
+FROM debian:forky-slim@sha256:91b0aaebf7a1ccacfe7a9cbff6ab2d6be7d9b3b6cf1dfcf44b25f9095c0e0464
 ARG DEBIAN_SNAPSHOT
 
 # uv provides dependency resolution; pinned rather than :latest so builds are reproducible.
