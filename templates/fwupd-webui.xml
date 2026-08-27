@@ -32,6 +32,15 @@ Firmware inventory and updates for your server. Lists every device fwupd can see
   <ExtraSearchTerms>fwupd firmware lvfs bios nvme ssd hba thunderbolt update</ExtraSearchTerms>
   <Requires>Privileged mode and host access to /sys, /dev and /run/udev. Internet access for LVFS metadata.</Requires>
   <Changes>
+### 0.2.0
+Clearer refusal for `uefi_dbx`. It is still never flashable, but the explanation
+now describes the real consequence -- a machine that stops booting until someone
+disables Secure Boot in firmware setup -- instead of a firmware write it does not
+perform.
+
+Proxmox LXC deployments no longer break terminal allocation on the host, and now
+see UEFI firmware devices. No effect on Unraid.
+
 ### 0.1.1
 Show the application version in the UI header and in /api/status.
 
@@ -49,8 +58,8 @@ First release. Firmware inventory with optional flashing, off by default.
        the firmware tooling underneath them changes. -->
   <DefaultTagDescription>Latest release. Tracks new versions as they ship.</DefaultTagDescription>
   <Branch>
-    <Tag>v0.1.1</Tag>
-    <TagDescription>Pinned to v0.1.1. Does not move.</TagDescription>
+    <Tag>v0.2.0</Tag>
+    <TagDescription>Pinned to v0.2.0. Does not move.</TagDescription>
   </Branch>
 
   <Config Name="WebUI Port" Target="8099" Default="8099" Mode="tcp"
