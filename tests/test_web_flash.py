@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from fwupd_webui.config import Config
+from fwupd_webui.fwupd.cli import FwupdCommandFailed, FwupdError
 from fwupd_webui.fwupd.flash import FlashJob, FlashStatus
 from fwupd_webui.fwupd.models import Device
 from fwupd_webui.fwupd.service import DeviceView, Inventory, MetadataStatus
@@ -40,6 +41,9 @@ class FakeService:
             fwupd_version="2.1.7",
             flashing_enabled=self.flashing_enabled,
         )
+
+    async def cached_inventory(self, max_age_seconds=None):
+        return await self.inventory()
 
     async def refresh(self):
         return (await self.inventory()).metadata
@@ -118,9 +122,6 @@ def test_refused_flash_renders_a_full_page_not_a_bare_fragment():
         async def start_flash(self, *a, **k):
             raise PermissionError("type the device name exactly")
 
-        async def cached_inventory(self, max_age_seconds=None):
-            return await self.inventory()
-
     resp = client_for(Refusing()).post(
         "/flash", data={"device_id": "dev-1", "version": "2.0", "operation": "upgrade"}
     )
@@ -198,3 +199,44 @@ def test_no_cancel_route_exists():
     written firmware."""
     client = client_for(FakeService())
     assert client.post("/flash/cancel").status_code == 404
+
+
+class NothingCachedDuringFlash(FakeService):
+    """What the real service does: enumerating waits behind the running flash, and
+    with no snapshot cached_inventory refuses rather than wait."""
+
+    async def inventory(self):
+        raise AssertionError("must not enumerate during a flash")
+
+    async def cached_inventory(self, max_age_seconds=None):
+        raise FwupdError("a flash is in progress and no inventory has been captured yet")
+
+
+def test_progress_page_renders_during_a_flash_without_enumerating():
+    resp = client_for(NothingCachedDuringFlash(job=running_job())).get("/flash")
+    assert resp.status_code == 200
+    assert "flash-progress" in resp.text
+
+
+def test_a_second_post_goes_to_progress_without_validating():
+    service = NothingCachedDuringFlash(job=running_job())
+    resp = client_for(service).post(
+        "/flash",
+        data={"device_id": "dev-1", "version": "2.0", "operation": "upgrade"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/flash"
+    assert service.started == []
+
+
+def test_a_fwupd_failure_during_validation_is_a_refusal_not_a_server_error():
+    class Broken(FakeService):
+        async def start_flash(self, *a, **k):
+            raise FwupdCommandFailed(1, "enumeration broke")
+
+    resp = client_for(Broken()).post(
+        "/flash", data={"device_id": "dev-1", "version": "2.0", "operation": "upgrade"}
+    )
+    assert resp.status_code == 400
+    assert "enumeration broke" in resp.text
