@@ -145,7 +145,7 @@ measured dead end rather than a pending improvement.
 Disabled unless `FWUPD_WEBUI_ENABLE_FLASHING=true`. When it is off the routes do not
 exist — `POST /flash` is a genuine 404, not a handler that refuses.
 
-With it on, four things still stand between a click and a write:
+With it on, five things still stand between a click and a write:
 
 1. **Nothing flashes without typing the device name.** There is no allowlist and no
    one-click path — the same rule applies to a mouse receiver and to your cache drive.
@@ -169,6 +169,10 @@ With it on, four things still stand between a click and a write:
    setup — physical access this tool cannot assume on a headless host. The Docker image additionally disables `uefi_capsule` in its
    baked fwupd config, but the application enforces this regardless — an LXC or native
    install uses the host's fwupd configuration, where those plugins are live.
+5. **The firmware file must match signed metadata.** The app downloads the cab over HTTPS
+   and compares it to the SHA-256 in fwupd's signed metadata before `fwupdtool` sees it.
+   A mismatch, or a release with no signed metadata, HTTPS location or SHA-256, stops the
+   flash before anything is written.
 
 The design started with an allowlist of plugins that could flash in one click. It was
 wrong twice — most memorably by making a NAS cache pool, the drive Docker runs from,

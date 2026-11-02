@@ -106,7 +106,7 @@ class FwupdService:
         self._state_dir = Path(state_dir)
         self._clock = clock
         self._lock = asyncio.Lock()
-        self.flash_manager = FlashManager(cli)
+        self.flash_manager = FlashManager(cli, work_dir=self._state_dir)
         self._cached: tuple[float, Inventory] | None = None
 
     async def _call(self, fn, *args):
@@ -285,13 +285,23 @@ class FwupdService:
                 "will not be flashed from here."
             )
 
-        if not release.uri:
-            raise LookupError(f"release {version} has no download URI")
+        # The checksum is only worth checking against if the metadata carrying it
+        # was signed. Without this, it could come from an unsigned remote.
+        if "trusted-metadata" not in release.flags:
+            raise PermissionError(
+                f"Release {version} does not come from signed metadata, so it will not "
+                "be flashed from here."
+            )
+        if not release.download_url:
+            raise LookupError(f"release {version} has no HTTPS download location")
+        if not release.sha256:
+            raise LookupError(f"release {version} has no SHA-256 checksum to verify against")
 
         async with self._lock:
             job = await self.flash_manager.start(
-                release.uri,
+                release.download_url,
                 device_id,
+                sha256=release.sha256,
                 device_name=device.display_name,
                 version=version,
                 allow_older=operation == "downgrade",

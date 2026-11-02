@@ -1,3 +1,6 @@
+import io
+from pathlib import Path
+
 import pytest
 
 from fwupd_webui.config import Config
@@ -7,9 +10,36 @@ from fwupd_webui.fwupd.models import Device
 from fwupd_webui.fwupd.service import FwupdService
 
 NAME = "Unifying Receiver"
+SHA_A = "a" * 64
+SHA_B = "b" * 64
 
 
-def make_device(plugin="logitech_hidpp", name="Unifying Receiver", version="1.0"):
+def release(
+    version="2.0", url="https://lvfs/a.cab", sha=SHA_A, flags=("trusted-metadata",), **rest
+):
+    return {
+        "Version": version,
+        "Locations": [url],
+        "Checksum": ["0" * 40, sha],
+        "Flags": list(flags),
+        **rest,
+    }
+
+
+def recording_download(svc):
+    """Replaces the network. Records what would have been fetched."""
+    svc.downloads = []
+
+    def fake(url, sha256, dest_dir):
+        svc.downloads.append((url, sha256))
+        path = dest_dir / "firmware.cab"
+        path.write_bytes(b"cab")
+        return path
+
+    svc.flash_manager._download = fake
+
+
+def make_device(plugin="logitech_hidpp", name="Unifying Receiver", version="1.0", releases=None):
     return Device.model_validate(
         {
             "DeviceId": "dev-1",
@@ -17,7 +47,7 @@ def make_device(plugin="logitech_hidpp", name="Unifying Receiver", version="1.0"
             "Plugin": plugin,
             "Version": version,
             "Flags": ["updatable"],
-            "Releases": [{"Version": "2.0", "Uri": "https://lvfs/f.cab"}],
+            "Releases": [releases or release()],
         }
     )
 
@@ -52,11 +82,12 @@ class StubCli:
         self.installs.append((target, device_id, allow_older, allow_reinstall))
 
 
-def service(tmp_path, *, enabled=True, plugin="logitech_hidpp"):
-    cli = StubCli([make_device(plugin=plugin)])
+def service(tmp_path, *, enabled=True, plugin="logitech_hidpp", releases=None):
+    cli = StubCli([make_device(plugin=plugin, releases=releases)])
     config = Config.from_env({"FWUPD_WEBUI_ENABLE_FLASHING": "true" if enabled else "false"})
     svc = FwupdService(cli, config, tmp_path)
     svc._stub_cli = cli
+    recording_download(svc)
     return svc
 
 
@@ -65,7 +96,10 @@ async def test_flashing_with_the_typed_name_succeeds(tmp_path):
     job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
 
     assert job.status is FlashStatus.SUCCEEDED
-    assert svc._stub_cli.installs == [("https://lvfs/f.cab", "dev-1", False, False)]
+    assert svc.downloads == [("https://lvfs/a.cab", SHA_A)]
+    target, device_id, allow_older, allow_reinstall = svc._stub_cli.installs[0]
+    assert (Path(target).name, device_id) == ("firmware.cab", "dev-1")
+    assert (allow_older, allow_reinstall) == (False, False)
 
 
 async def test_flashing_is_refused_when_disabled(tmp_path):
@@ -236,8 +270,8 @@ def variant_service(tmp_path, *, updates=None):
             "Version": "1.0",
             "Flags": ["updatable"],
             "Releases": [
-                {"Version": "2.0", "AppstreamId": "a.firmware", "Uri": "https://lvfs/a.cab"},
-                {"Version": "2.0", "AppstreamId": "b.firmware", "Uri": "https://lvfs/b.cab"},
+                release(AppstreamId="a.firmware"),
+                release(url="https://lvfs/b.cab", sha=SHA_B, AppstreamId="b.firmware"),
             ],
         }
     )
@@ -247,6 +281,7 @@ def variant_service(tmp_path, *, updates=None):
     config = Config.from_env({"FWUPD_WEBUI_ENABLE_FLASHING": "true"})
     svc = FwupdService(cli, config, tmp_path)
     svc._stub_cli = cli
+    recording_download(svc)
     return svc
 
 
@@ -262,7 +297,7 @@ async def test_the_chosen_variant_is_the_one_flashed(tmp_path):
     await svc.start_flash(
         "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
     )
-    assert svc._stub_cli.installs == [("https://lvfs/b.cab", "dev-1", False, False)]
+    assert svc.downloads == [("https://lvfs/b.cab", SHA_B)]
 
 
 async def test_release_get_updates_did_not_confirm_is_refused(tmp_path):
@@ -286,3 +321,39 @@ async def test_flash_is_refused_when_confirmation_cannot_be_checked(tmp_path):
             "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
         )
     assert svc._stub_cli.installs == []
+
+
+@pytest.mark.parametrize(
+    ("releases", "error", "message"),
+    [
+        (release(flags=()), PermissionError, "signed metadata"),
+        (release(url="./fakedevice124.cab"), LookupError, "no HTTPS download location"),
+        (release(url="http://lvfs/a.cab"), LookupError, "no HTTPS download location"),
+        ({**release(), "Checksum": ["0" * 40]}, LookupError, "no SHA-256"),
+    ],
+)
+async def test_a_release_that_cannot_be_verified_is_refused(tmp_path, releases, error, message):
+    svc = service(tmp_path, releases=releases)
+    with pytest.raises(error, match=message):
+        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    assert svc.downloads == []
+    assert svc._stub_cli.installs == []
+
+
+async def test_the_real_download_rejects_the_wrong_file_before_any_install(tmp_path, monkeypatch):
+    """Everything but the network is real: a bad file must never reach fwupdtool."""
+    from fwupd_webui.fwupd import download as download_module
+    from fwupd_webui.fwupd.download import download_verified
+
+    monkeypatch.setattr(
+        download_module._opener, "open", lambda request, timeout: io.BytesIO(b"tampered")
+    )
+    svc = service(tmp_path)
+    svc.flash_manager._download = download_verified
+
+    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+
+    assert job.status is FlashStatus.FAILED
+    assert "checksum mismatch" in job.error
+    assert svc._stub_cli.installs == []
+    assert [p for p in tmp_path.iterdir() if p.name.startswith("flash-")] == []

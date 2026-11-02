@@ -45,7 +45,7 @@ def client() -> TestClient:
                             "Urgency": "high",
                             "Summary": "Improves thermal throttling",
                             "Description": "<p>Fixes an issue under sustained write load.</p>",
-                            "Uri": "https://fwupd.org/downloads/abc.cab",
+                            "Locations": ["https://fwupd.org/downloads/abc.cab"],
                         }
                     )
                 ],
@@ -114,13 +114,21 @@ def _unconfirmed_client(enabled=True):
                 devices=[
                     DeviceView(
                         device=Device.model_validate(
-                            {"DeviceId": "kek", "Name": "KEK CA", "Plugin": "uefi_kek",
-                             "Version": "2011", "Flags": ["updatable"]}
+                            {
+                                "DeviceId": "kek",
+                                "Name": "KEK CA",
+                                "Plugin": "uefi_kek",
+                                "Version": "2011",
+                                "Flags": ["updatable"],
+                            }
                         ),
                         unconfirmed=[
                             Release.model_validate(
-                                {"Version": "2023", "AppstreamId": "kek.ami.firmware",
-                                 "NameVariantSuffix": "AMI"}
+                                {
+                                    "Version": "2023",
+                                    "AppstreamId": "kek.ami.firmware",
+                                    "NameVariantSuffix": "AMI",
+                                }
                             )
                         ],
                     )
