@@ -225,3 +225,64 @@ async def test_cached_inventory_serves_the_snapshot_during_a_flash(tmp_path):
 
     inventory = await svc.cached_inventory(max_age_seconds=0)
     assert inventory is not None
+
+
+def variant_service(tmp_path, *, updates=None):
+    device = Device.model_validate(
+        {
+            "DeviceId": "dev-1",
+            "Name": NAME,
+            "Plugin": "logitech_hidpp",
+            "Version": "1.0",
+            "Flags": ["updatable"],
+            "Releases": [
+                {"Version": "2.0", "AppstreamId": "a.firmware", "Uri": "https://lvfs/a.cab"},
+                {"Version": "2.0", "AppstreamId": "b.firmware", "Uri": "https://lvfs/b.cab"},
+            ],
+        }
+    )
+    cli = StubCli([device])
+    if updates is not None:
+        cli.get_updates = lambda: updates
+    config = Config.from_env({"FWUPD_WEBUI_ENABLE_FLASHING": "true"})
+    svc = FwupdService(cli, config, tmp_path)
+    svc._stub_cli = cli
+    return svc
+
+
+async def test_ambiguous_version_is_refused_rather_than_guessed(tmp_path):
+    svc = variant_service(tmp_path)
+    with pytest.raises(LookupError, match="more than one"):
+        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    assert svc._stub_cli.installs == []
+
+
+async def test_the_chosen_variant_is_the_one_flashed(tmp_path):
+    svc = variant_service(tmp_path)
+    await svc.start_flash(
+        "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
+    )
+    assert svc._stub_cli.installs == [("https://lvfs/b.cab", "dev-1", False, False)]
+
+
+async def test_release_get_updates_did_not_confirm_is_refused(tmp_path):
+    """The page hides the button for these. This holds whatever the page offered."""
+    svc = variant_service(tmp_path, updates=[])
+    with pytest.raises(PermissionError, match="not confirmed"):
+        await svc.start_flash(
+            "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
+        )
+    assert svc._stub_cli.installs == []
+
+
+async def test_flash_is_refused_when_confirmation_cannot_be_checked(tmp_path):
+    def broken():
+        raise FwupdCommandFailed(1, "metadata is missing")
+
+    svc = variant_service(tmp_path)
+    svc._stub_cli.get_updates = broken
+    with pytest.raises(PermissionError, match="could not check"):
+        await svc.start_flash(
+            "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
+        )
+    assert svc._stub_cli.installs == []

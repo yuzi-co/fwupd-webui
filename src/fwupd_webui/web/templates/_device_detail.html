@@ -16,6 +16,7 @@
     {% for release in view.available %}
     <li>
       <strong>{{ release.version }}</strong>
+      {% if release.variant %}<span class="badge">{{ release.variant }}</span>{% endif %}
       {% if release.urgency %}<span class="badge">{{ release.urgency }}</span>{% endif %}
       {% if release.summary %}<div>{{ release.summary }}</div>{% endif %}
       {% if release.description %}<div class="changelog">{{ release.description | plain_text }}</div>{% endif %}
@@ -23,7 +24,7 @@
       {% if inventory.flashing_enabled %}
       <div class="flash-actions">
         {% for op in ["upgrade", "downgrade", "reinstall"] %}
-        <button hx-get="/devices/{{ view.device.device_id }}/confirm?version={{ release.version }}&amp;operation={{ op }}"
+        <button hx-get="/devices/{{ view.device.device_id }}/confirm?version={{ release.version }}&amp;operation={{ op }}{% if release.appstream_id %}&amp;appstream_id={{ release.appstream_id | urlencode }}{% endif %}"
                 hx-target="closest li" hx-swap="beforeend">{{ op | capitalize }}</button>
         {% endfor %}
       </div>
@@ -31,8 +32,28 @@
     </li>
     {% endfor %}
   </ul>
-  {% else %}
+  {% elif not view.unconfirmed %}
   <p class="muted">No releases available for this device.</p>
+  {% endif %}
+
+  {% if view.unconfirmed %}
+  <h3>Unconfirmed releases</h3>
+  <p class="muted">
+    fwupd lists these as upgrades, but <code>get-updates</code> did not return them,
+    so they are not confirmed for this device and cannot be flashed from here.
+    A listed variant may be for a different board.
+  </p>
+  <ul class="releases">
+    {% for release in view.unconfirmed %}
+    <li>
+      <strong>{{ release.version }}</strong>
+      {% if release.variant %}<span class="badge">{{ release.variant }}</span>{% endif %}
+      {% if release.urgency %}<span class="badge">{{ release.urgency }}</span>{% endif %}
+      {% if release.summary %}<div>{{ release.summary }}</div>{% endif %}
+      {% if release.description %}<div class="changelog">{{ release.description | plain_text }}</div>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
   {% endif %}
 
   {% if not inventory.flashing_enabled %}

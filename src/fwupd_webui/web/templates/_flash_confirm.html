@@ -25,6 +25,7 @@
   <form method="post" action="/flash">
     <input type="hidden" name="device_id" value="{{ view.device.device_id }}">
     <input type="hidden" name="version" value="{{ version }}">
+    {% if appstream_id %}<input type="hidden" name="appstream_id" value="{{ appstream_id }}">{% endif %}
     <input type="hidden" name="operation" value="{{ operation }}">
     <label>
       Type <code>{{ confirm_phrase }}</code> to confirm:

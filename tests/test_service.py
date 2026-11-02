@@ -1,10 +1,12 @@
 import asyncio
+import json
+from pathlib import Path
 
 import pytest
 
 from fwupd_webui.config import Config
 from fwupd_webui.fwupd.cli import FwupdCommandFailed
-from fwupd_webui.fwupd.models import Device
+from fwupd_webui.fwupd.models import Device, parse_devices
 from fwupd_webui.fwupd.service import FwupdService
 
 
@@ -212,3 +214,51 @@ async def test_duplicate_release_versions_are_collapsed(tmp_path):
     inv = await svc.inventory()
     versions = [r.version for r in inv.devices[0].available]
     assert versions == ["1.2.4", "1.2.3"], versions
+
+
+def _proxbox_devices() -> list[Device]:
+    """Real `get-devices` output from a host where a freshly started fwupd left
+    KEK CA without the `supported` flag, so `get-updates` returned nothing."""
+    path = Path(__file__).parent / "fixtures" / "get-devices-kek-unsupported.json"
+    return parse_devices(json.loads(path.read_text(encoding="utf-8")))
+
+
+async def test_upgrade_missing_from_get_updates_is_listed_as_unconfirmed(tmp_path, config):
+    cli = FakeCli(devices=_proxbox_devices(), updates=[])
+    inv = await FwupdService(cli, config, tmp_path).inventory()
+
+    kek = next(v for v in inv.devices if v.device.name == "KEK CA")
+    assert kek.has_update is True
+    assert kek.available == []
+    assert [r.version for r in kek.unconfirmed] == ["2023", "2023"]
+    assert kek.latest.version == "2023"
+
+
+async def test_release_variants_of_one_version_stay_separate(tmp_path, config):
+    """AMI and ASUS publish different files as the same version. Collapsing them
+    by version would leave whichever came first, right or wrong for this board."""
+    cli = FakeCli(devices=_proxbox_devices(), updates=[])
+    inv = await FwupdService(cli, config, tmp_path).inventory()
+
+    kek = next(v for v in inv.devices if v.device.name == "KEK CA")
+    assert [r.variant for r in kek.unconfirmed] == ["AMI", "ASUS"]
+
+
+async def test_release_that_is_not_an_upgrade_is_not_offered(tmp_path, config):
+    """UEFI CA already runs 2023; its release has no is-upgrade flag."""
+    cli = FakeCli(devices=_proxbox_devices(), updates=[])
+    inv = await FwupdService(cli, config, tmp_path).inventory()
+
+    uefi_ca = next(v for v in inv.devices if v.device.name == "UEFI CA")
+    assert uefi_ca.has_update is False
+
+
+async def test_release_confirmed_by_get_updates_is_not_also_unconfirmed(tmp_path, config):
+    devices = _proxbox_devices()
+    kek = next(d for d in devices if d.name == "KEK CA")
+    cli = FakeCli(devices=devices, updates=[kek])
+    inv = await FwupdService(cli, config, tmp_path).inventory()
+
+    view = next(v for v in inv.devices if v.device.name == "KEK CA")
+    assert [r.variant for r in view.available] == ["AMI", "ASUS"]
+    assert view.unconfirmed == []

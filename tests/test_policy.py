@@ -165,3 +165,14 @@ def test_a_device_named_only_with_symbols_cannot_be_confirmed_by_blank():
     sym = device(Name="™")
     assert confirmation_phrase(sym) == "™", "fall back to the raw name rather than nothing"
     assert check_override(sym, "") is False
+
+
+def test_secure_boot_key_stores_are_never_flashable():
+    """Same hazard as dbx: efivars writes that cannot be undone from here."""
+    for plugin in ("uefi_pk", "uefi_kek", "uefi_db"):
+        device = Device.model_validate(
+            {"DeviceId": "d", "Name": "KEK CA", "Plugin": plugin, "Flags": ["updatable"]}
+        )
+        permission = evaluate(device, enabled=True)
+        assert permission.flashable is False, plugin
+        assert "Secure Boot" in permission.reason, plugin

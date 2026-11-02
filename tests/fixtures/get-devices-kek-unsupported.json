@@ -1,0 +1,232 @@
+{
+  "Devices": [
+    {
+      "Name": "KEK CA",
+      "DeviceId": "b7a1d3d90faa1f6275d9a98da4fb3be7118e61c7",
+      "ParentDeviceId": "2a4c23bfb79b5dabe474cb7b1b3e604645d6f9c6",
+      "CompositeId": "2a4c23bfb79b5dabe474cb7b1b3e604645d6f9c6",
+      "InstanceIds": [
+        "UEFI\\VENDOR_Microsoft&NAME_Microsoft-KEK-CA",
+        "UEFI\\CRT_9F402B1CC0243CBEDC58A525789816CCCA7687A9"
+      ],
+      "Guid": [
+        "814e950f-1449-566a-a190-42c9d3a3a2df",
+        "dfa66406-6568-5bdf-bb8e-b53ddb4be4cf"
+      ],
+      "Plugin": "uefi_kek",
+      "Protocols": [
+        "org.uefi.dbx2"
+      ],
+      "Flags": [
+        "internal",
+        "updatable",
+        "needs-reboot",
+        "usable-during-update",
+        "signed-payload",
+        "can-emulation-tag"
+      ],
+      "Vendor": "Microsoft",
+      "VendorIds": [
+        "UEFI:Microsoft"
+      ],
+      "Version": "2011",
+      "VersionFormat": "number",
+      "VersionRaw": 2011,
+      "Icons": [
+        "application-certificate"
+      ],
+      "Created": 1793619502,
+      "Releases": [
+        {
+          "AppstreamId": "com.microsoft.kek.ami.1cd5e564.firmware",
+          "ReleaseId": "113893",
+          "RemoteId": "lvfs",
+          "Name": "Secure Boot KEK",
+          "NameVariantSuffix": "AMI",
+          "Summary": "UEFI Secure Boot Key Exchange Key",
+          "Description": "<p>This updates the UEFI Signature Database (the &quot;KEK&quot;) to the latest release from Microsoft, signed by DO NOT TRUST - AMI Test PK.</p>",
+          "Version": "2023",
+          "Filename": "KEK-AMI.cab",
+          "Protocol": "org.uefi.dbx2",
+          "Categories": [
+            "X-Configuration",
+            "X-System"
+          ],
+          "Checksum": [
+            "b713663b6c393736431300f7fe4a2870fbf79480",
+            "103ebd21a803540296daff93fa7e1595bf323b4db78fbc6287aed945ab5965fb"
+          ],
+          "License": "LicenseRef-proprietary",
+          "Size": 2765,
+          "Created": 1745884800,
+          "Locations": [
+            "https://fwupd.org/downloads/103ebd21a803540296daff93fa7e1595bf323b4db78fbc6287aed945ab5965fb-KEK-AMI.cab"
+          ],
+          "Homepage": "https://fwupd.github.io/libfwupdplugin/uefi-db.html",
+          "Vendor": "Linux Foundation",
+          "Flags": [
+            "trusted-metadata",
+            "is-upgrade"
+          ]
+        },
+        {
+          "AppstreamId": "com.microsoft.kek.asus.1cd5e564.firmware",
+          "ReleaseId": "113905",
+          "RemoteId": "lvfs",
+          "Name": "Secure Boot KEK",
+          "NameVariantSuffix": "ASUS",
+          "Summary": "UEFI Secure Boot Key Exchange Key",
+          "Description": "<p>This updates the UEFI Signature Database (the &quot;KEK&quot;) to the latest release from Microsoft, signed by DO NOT TRUST - AMI Test PK.</p>",
+          "Version": "2023",
+          "Filename": "KEK-ASUS.cab",
+          "Protocol": "org.uefi.dbx2",
+          "Categories": [
+            "X-Configuration",
+            "X-System"
+          ],
+          "Checksum": [
+            "95f0c0d82f8dd6a7e4477759bbc35b7185b851c7",
+            "73ea2c69621eec29df454264907a2d3586d57ab2e58b7ff596d013bc37ca1714"
+          ],
+          "License": "LicenseRef-proprietary",
+          "Size": 2765,
+          "Created": 1745884800,
+          "Locations": [
+            "https://fwupd.org/downloads/73ea2c69621eec29df454264907a2d3586d57ab2e58b7ff596d013bc37ca1714-KEK-ASUS.cab"
+          ],
+          "Homepage": "https://fwupd.github.io/libfwupdplugin/uefi-db.html",
+          "Vendor": "Linux Foundation",
+          "Flags": [
+            "trusted-metadata",
+            "is-upgrade"
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "UEFI CA",
+      "DeviceId": "5bc922b7bd1adb5b6f99592611404036bd9f42d0",
+      "ParentDeviceId": "0352a8acc949c7df21fec16e566ba9a74e797a97",
+      "CompositeId": "0352a8acc949c7df21fec16e566ba9a74e797a97",
+      "InstanceIds": [
+        "UEFI\\VENDOR_Microsoft&NAME_Microsoft-UEFI-CA",
+        "UEFI\\CRT_7CD7437C555F89E7C2B50E21937E420C4E583E80"
+      ],
+      "Guid": [
+        "26f42cba-9bf6-5365-802b-e250eb757e96",
+        "308281c7-d0c5-52e0-8c1a-810540de03df"
+      ],
+      "Plugin": "uefi_db",
+      "Protocols": [
+        "org.uefi.dbx2"
+      ],
+      "Flags": [
+        "internal",
+        "updatable",
+        "supported",
+        "needs-reboot",
+        "signed-payload",
+        "can-emulation-tag"
+      ],
+      "Vendor": "Microsoft",
+      "VendorIds": [
+        "UEFI:Microsoft"
+      ],
+      "Version": "2023",
+      "VersionFormat": "number",
+      "VersionRaw": 2023,
+      "Icons": [
+        "application-certificate"
+      ],
+      "Created": 1793619503,
+      "Releases": [
+        {
+          "AppstreamId": "com.microsoft.db-uefi-3p.firmware",
+          "ReleaseId": "116503",
+          "RemoteId": "lvfs",
+          "Name": "Secure Boot Signature Database",
+          "Summary": "UEFI Secure Boot Signature Database",
+          "Description": "<p>This updates the 3rd Party UEFI Signature Database (the &quot;db&quot;) to the latest release from Microsoft.It also adds the latest OptionROM UEFI Signature Database update.</p>",
+          "Version": "2023",
+          "Filename": "DBUpdate-3P2023_OROM2023.cab",
+          "Protocol": "org.uefi.dbx2",
+          "Categories": [
+            "X-Configuration",
+            "X-System"
+          ],
+          "Checksum": [
+            "b53eb93620abf86bdf56d97811b7a9ab102ed4be",
+            "4bdf420ad7e5ddde89d7a66ffe1b4328927059d56551f03afac855c4ed80f6c3"
+          ],
+          "License": "LicenseRef-proprietary",
+          "Size": 10023,
+          "Created": 1745884800,
+          "Locations": [
+            "https://fwupd.org/downloads/4bdf420ad7e5ddde89d7a66ffe1b4328927059d56551f03afac855c4ed80f6c3-DBUpdate-3P2023_OROM2023.cab"
+          ],
+          "Homepage": "https://fwupd.github.io/libfwupdplugin/uefi-db.html",
+          "Vendor": "Microsoft",
+          "Flags": [
+            "trusted-metadata"
+          ],
+          "Reports": [
+            {
+              "DeviceName": "LENOVO ThinkPad P15v Gen 1",
+              "DistroId": "ubuntu",
+              "DistroVersion": "25.10",
+              "VersionOld": "2011",
+              "Vendor": "Lenovo",
+              "RemoteId": "lvfs",
+              "VendorId": 84,
+              "Flags": [
+                "is-upgrade"
+              ],
+              "RuntimeVersion(org.freedesktop.fwupd)": "2.0.16"
+            },
+            {
+              "DeviceName": "Framework Laptop 16 (AMD Ryzen 7040 Series)",
+              "DistroId": "fedora",
+              "DistroVariant": "workstation",
+              "DistroVersion": "42",
+              "VersionOld": "2011",
+              "Vendor": "Framework",
+              "RemoteId": "lvfs",
+              "VendorId": 438,
+              "Flags": [
+                "is-upgrade"
+              ],
+              "RuntimeVersion(org.freedesktop.fwupd)": "2.0.16"
+            },
+            {
+              "DeviceName": "Framework Laptop (12th Gen Intel Core)",
+              "DistroId": "fedora",
+              "DistroVariant": "workstation",
+              "DistroVersion": "42",
+              "VersionOld": "2011",
+              "Vendor": "Framework",
+              "RemoteId": "lvfs",
+              "VendorId": 438,
+              "Flags": [
+                "is-upgrade"
+              ],
+              "RuntimeVersion(org.freedesktop.fwupd)": "2.0.16"
+            },
+            {
+              "DeviceName": "Framework Laptop 13 (Intel Core Ultra Series 1)",
+              "DistroId": "nixos",
+              "DistroVersion": "25.11",
+              "VersionOld": "2011",
+              "Vendor": "Framework",
+              "RemoteId": "lvfs",
+              "VendorId": 438,
+              "Flags": [
+                "is-upgrade"
+              ],
+              "RuntimeVersion(org.freedesktop.fwupd)": "2.0.12"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

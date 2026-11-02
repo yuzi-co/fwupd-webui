@@ -44,7 +44,7 @@ class FakeService:
     async def refresh(self):
         return (await self.inventory()).metadata
 
-    async def start_flash(self, device_id, version, *, operation, typed_name):
+    async def start_flash(self, device_id, version, *, operation, typed_name, appstream_id=None):
         self.started.append((device_id, version, operation, typed_name))
         job = FlashJob(device_id=device_id, device_name="Unifying Receiver", version=version)
         job.status = FlashStatus.SUCCEEDED

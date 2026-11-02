@@ -87,7 +87,11 @@ async def device_detail(request: Request, device_id: str) -> HTMLResponse:
 
 @router.get("/devices/{device_id}/confirm", response_class=HTMLResponse)
 async def flash_confirm(
-    request: Request, device_id: str, version: str, operation: str = "upgrade"
+    request: Request,
+    device_id: str,
+    version: str,
+    operation: str = "upgrade",
+    appstream_id: str | None = None,
 ) -> HTMLResponse:
     """Render the confirm step. Always available -- it renders the reason when
     policy refuses, which is how an operator learns why there is no button.
@@ -107,6 +111,7 @@ async def flash_confirm(
                 context={
                     "view": view,
                     "version": version,
+                    "appstream_id": appstream_id,
                     "operation": operation,
                     "permission": service.permission_for(view.device),
                     "confirm_phrase": confirmation_phrase(view.device),

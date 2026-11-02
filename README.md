@@ -15,7 +15,7 @@ systemd. It started as an Unraid container and is no longer limited to it.
 `FWUPD_WEBUI_ENABLE_FLASHING=true` enables the firmware write path; without it the flash
 routes are not registered at all.
 
-**It never writes system firmware.** BIOS, UEFI capsule and SPI flash updates are
+**It never writes system firmware.** BIOS, UEFI capsule, SPI flash and Secure Boot key updates are
 refused outright, on every deployment target. See [Flashing firmware](#flashing-firmware).
 
 ![Device inventory](docs/screenshots/inventory.png)
@@ -212,6 +212,7 @@ curl -s http://host:8099/api/status | jq
       "plugin": "nvme",
       "current_version": "4B2QJXD7",
       "available_version": "5B2QJXD7",
+      "confirmed": true,
       "urgency": "high",
       "needs_reboot": true
     }
@@ -225,6 +226,9 @@ curl -s http://host:8099/api/status | jq
 unreachable, or the last flash failed). The endpoint returns **HTTP 503** when `status`
 is `error`, so a plain uptime probe catches a broken fwupd without anyone configuring a
 JSON path; `ok` and `degraded` both return 200.
+
+`confirmed` is `false` when fwupd lists the release as an upgrade but `get-updates` did not
+return it. Those releases are shown but cannot be flashed from here.
 
 `updates` is always present and is `[]` when there is nothing pending, so a check can
 read it unconditionally. `flash` is `null` until a flash has run, then reports phase,
