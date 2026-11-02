@@ -145,3 +145,18 @@ def test_a_single_string_location_and_checksum_do_not_fail_parsing():
     release = _release(Locations="https://x/f.cab", Checksum="a" * 64)
     assert release.download_url == "https://x/f.cab"
     assert release.sha256 == "a" * 64
+
+
+@pytest.mark.parametrize(
+    ("plugin", "name", "expected"),
+    [
+        ("uefi_pk", "DO NOT TRUST - AMI Test PK", True),
+        ("uefi_pk", "do not ship - test key", True),
+        ("uefi_pk", "ASUSTeK Platform Key", False),
+        ("uefi_pk", None, False),
+        ("nvme", "DO NOT TRUST drive", False),
+    ],
+)
+def test_test_platform_key_detection(plugin, name, expected):
+    device = Device.model_validate({"DeviceId": "d", "Plugin": plugin, "Name": name})
+    assert device.is_test_platform_key is expected

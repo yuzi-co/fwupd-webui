@@ -101,8 +101,10 @@ jobs:
             printf '    docker pull ghcr.io/%s:%s\n\n' "$REPO" "$TAG"
             printf 'Read-only by default. Firmware flashing requires setting\n'
             printf 'FWUPD_WEBUI_ENABLE_FLASHING=true, and even then every flash requires\n'
-            printf 'typing the device name. System firmware (BIOS, UEFI capsule, SPI flash)\n'
-            printf 'is refused outright.\n\n'
+            printf 'typing the device name. System firmware and Secure Boot keys are refused\n'
+            printf 'outright. Flashing is experimental: it has not yet been tested on real\n'
+            printf 'hardware.\n\n'
+            printf 'Every page needs a login. See the README for the generated password.\n\n'
             printf 'Requires --privileged; the README explains why that cannot currently be\n'
             printf 'narrowed to a capability set.\n'
           } > /tmp/notes.md

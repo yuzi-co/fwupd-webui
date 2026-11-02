@@ -316,4 +316,4 @@ NAS. Narrowing to an explicit capability set is tracked as a follow-up.
 
 ## Repository
 
-`/home/dim/projects/fwupd-webui`, standalone git repository.
+Standalone git repository.

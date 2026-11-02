@@ -15,8 +15,12 @@ Firmware inventory and updates for your server. Lists every device fwupd can see
     Read-only by default. Firmware flashing is off unless you set
     FWUPD_WEBUI_ENABLE_FLASHING to true; while it is off, the flash routes do not
     exist at all. Even when enabled, every flash requires typing the device name to
-    confirm, storage devices carry a data-loss warning, and system firmware
-    (BIOS, UEFI capsule, SPI flash) is refused outright.
+    confirm, storage devices carry a data-loss warning, and system firmware and Secure
+    Boot keys (BIOS, UEFI capsule, SPI flash, PK, KEK, db, dbx) are refused outright.
+    Flashing is experimental: it has not yet been tested on real hardware.
+
+    Every page needs a login. Set a password below, or read the generated one from the
+    container log or /var/lib/fwupd/.webui-password.
 
     Requires privileged mode. Enumerating firmware means issuing NVMe admin commands
     and SCSI ioctls, which an unprivileged container cannot do — without it you will
@@ -95,6 +99,10 @@ First release. Firmware inventory with optional flashing, off by default.
           Default="/mnt/user/appdata/fwupd-webui" Mode="rw"
           Description="Persists downloaded LVFS metadata across restarts"
           Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/fwupd-webui</Config>
+
+  <Config Name="Password" Target="FWUPD_WEBUI_PASSWORD" Default=""
+          Description="Login password, also the Bearer token for /api/status. Leave empty to generate one at first start: it is written to the container log once and saved in /var/lib/fwupd/.webui-password."
+          Type="Variable" Display="always" Required="false" Mask="true"></Config>
 
   <Config Name="Metadata refresh interval (hours)" Target="FWUPD_WEBUI_REFRESH_INTERVAL_HOURS"
           Default="24" Description="How old LVFS metadata may be before startup refetches it"

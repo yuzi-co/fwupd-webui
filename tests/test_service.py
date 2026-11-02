@@ -216,7 +216,7 @@ async def test_duplicate_release_versions_are_collapsed(tmp_path):
     assert versions == ["1.2.4", "1.2.3"], versions
 
 
-def _proxbox_devices() -> list[Device]:
+def _kek_unsupported_devices() -> list[Device]:
     """Real `get-devices` output from a host where a freshly started fwupd left
     KEK CA without the `supported` flag, so `get-updates` returned nothing."""
     path = Path(__file__).parent / "fixtures" / "get-devices-kek-unsupported.json"
@@ -224,7 +224,7 @@ def _proxbox_devices() -> list[Device]:
 
 
 async def test_upgrade_missing_from_get_updates_is_listed_as_unconfirmed(tmp_path, config):
-    cli = FakeCli(devices=_proxbox_devices(), updates=[])
+    cli = FakeCli(devices=_kek_unsupported_devices(), updates=[])
     inv = await FwupdService(cli, config, tmp_path).inventory()
 
     kek = next(v for v in inv.devices if v.device.name == "KEK CA")
@@ -237,7 +237,7 @@ async def test_upgrade_missing_from_get_updates_is_listed_as_unconfirmed(tmp_pat
 async def test_release_variants_of_one_version_stay_separate(tmp_path, config):
     """AMI and ASUS publish different files as the same version. Collapsing them
     by version would leave whichever came first, right or wrong for this board."""
-    cli = FakeCli(devices=_proxbox_devices(), updates=[])
+    cli = FakeCli(devices=_kek_unsupported_devices(), updates=[])
     inv = await FwupdService(cli, config, tmp_path).inventory()
 
     kek = next(v for v in inv.devices if v.device.name == "KEK CA")
@@ -246,7 +246,7 @@ async def test_release_variants_of_one_version_stay_separate(tmp_path, config):
 
 async def test_release_that_is_not_an_upgrade_is_not_offered(tmp_path, config):
     """UEFI CA already runs 2023; its release has no is-upgrade flag."""
-    cli = FakeCli(devices=_proxbox_devices(), updates=[])
+    cli = FakeCli(devices=_kek_unsupported_devices(), updates=[])
     inv = await FwupdService(cli, config, tmp_path).inventory()
 
     uefi_ca = next(v for v in inv.devices if v.device.name == "UEFI CA")
@@ -254,7 +254,7 @@ async def test_release_that_is_not_an_upgrade_is_not_offered(tmp_path, config):
 
 
 async def test_release_confirmed_by_get_updates_is_not_also_unconfirmed(tmp_path, config):
-    devices = _proxbox_devices()
+    devices = _kek_unsupported_devices()
     kek = next(d for d in devices if d.name == "KEK CA")
     cli = FakeCli(devices=devices, updates=[kek])
     inv = await FwupdService(cli, config, tmp_path).inventory()

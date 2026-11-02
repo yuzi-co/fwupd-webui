@@ -12,6 +12,10 @@ _MODEL_CONFIG = ConfigDict(extra="ignore", populate_by_name=True)
 
 _SHA256_RE = re.compile(r"[0-9a-fA-F]{64}")
 
+# How firmware vendors label a Platform Key that was only ever meant for testing,
+# as in "DO NOT TRUST - AMI Test PK".
+_TEST_KEY_MARKERS = ("DO NOT TRUST", "DO NOT SHIP")
+
 
 class Release(BaseModel):
     model_config = _MODEL_CONFIG
@@ -76,6 +80,13 @@ class Device(BaseModel):
         if self.plugin:
             return f"Unknown {self.plugin} device"
         return "Unknown device"
+
+    @property
+    def is_test_platform_key(self) -> bool:
+        if self.plugin != "uefi_pk" or not self.name:
+            return False
+        name = self.name.upper()
+        return any(marker in name for marker in _TEST_KEY_MARKERS)
 
     @property
     def updatable(self) -> bool:

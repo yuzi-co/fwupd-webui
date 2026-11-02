@@ -11,9 +11,13 @@ NVMe drives, SATA disks, HBAs, network cards, Thunderbolt controllers, docks, BI
 Runs on any Linux host: as a Docker container, as an LXC guest, or natively under
 systemd. It started as an Unraid container and is no longer limited to it.
 
-**Flashing is off by default.** Out of the box this is a read-only inventory. Setting
-`FWUPD_WEBUI_ENABLE_FLASHING=true` enables the firmware write path; without it the flash
-routes are not registered at all.
+**Every page needs a login.** There is one password, and the app generates one if you
+don't set it. See [Logging in](#logging-in).
+
+**Flashing is off by default, and experimental.** Out of the box this is a read-only
+inventory. Setting `FWUPD_WEBUI_ENABLE_FLASHING=true` enables the firmware write path;
+without it the flash routes are not registered at all. Flashing has only been tested on
+fwupd's synthetic device so far, not on real hardware.
 
 **It never writes system firmware.** BIOS, UEFI capsule, SPI flash and Secure Boot key updates are
 refused outright, on every deployment target. See [Flashing firmware](#flashing-firmware).
@@ -47,6 +51,8 @@ docker run -d --name fwupd-webui \
 ```
 
 Or `docker compose up -d` with the bundled [`docker-compose.yml`](docker-compose.yml).
+
+The first start generates a password. See [Logging in](#logging-in) to read it or set your own.
 
 Images are `amd64` only. Pin a version rather than tracking `latest` if you would
 rather choose when the firmware tooling under you changes:
@@ -145,6 +151,10 @@ measured dead end rather than a pending improvement.
 Disabled unless `FWUPD_WEBUI_ENABLE_FLASHING=true`. When it is off the routes do not
 exist — `POST /flash` is a genuine 404, not a handler that refuses.
 
+**This is experimental.** The install step has only run on fwupd's synthetic test device, and
+no real hardware has been flashed with this tool yet. Don't start with a device you can't
+afford to lose.
+
 With it on, five things still stand between a click and a write:
 
 1. **Nothing flashes without typing the device name.** There is no allowlist and no
@@ -193,13 +203,33 @@ by re-reading the device after the flash. This tool never reboots the host.
 **Leaving it on.** Nothing expires the flag. Turning it off again is a container
 restart, and that is the only thing keeping the outermost control meaningful.
 
-## Monitoring
+## Logging in
 
-`GET /api/status` returns everything a check needs in one request. Always available,
-regardless of whether flashing is enabled.
+Every page and API route needs the password. Only `/login` and static files are open.
+
+Set `FWUPD_WEBUI_PASSWORD`, or let the first start generate one. A generated password is
+written to the log once and saved in `/var/lib/fwupd/.webui-password`, readable only by root:
 
 ```bash
-curl -s http://host:8099/api/status | jq
+docker exec fwupd-webui cat /var/lib/fwupd/.webui-password        # Docker or Unraid
+pct exec <ctid> -- cat /var/lib/fwupd/.webui-password             # Proxmox LXC
+sudo cat /var/lib/fwupd/.webui-password                           # native install
+```
+
+Sessions last 12 hours and are held in memory, so restarting the app logs you out. Five wrong
+passwords from one address lock that address out for a minute.
+
+**The app serves plain HTTP**, so someone who can sniff your network can capture the password.
+If you don't trust the network, put a reverse proxy with TLS in front of it. The proxy must pass
+the original `Host` header: the app refuses a POST whose `Origin` doesn't match it.
+
+## Monitoring
+
+`GET /api/status` returns everything a check needs in one request, whether or not flashing
+is enabled. Send the password as a Bearer token. Without it the endpoint returns 401.
+
+```bash
+curl -s -H "Authorization: Bearer $PASSWORD" http://host:8099/api/status | jq
 ```
 
 ```json
@@ -246,10 +276,10 @@ Useful checks:
 
 ```bash
 # any firmware updates pending?
-curl -s http://host:8099/api/status | jq '.devices.with_updates'
+curl -s -H "Authorization: Bearer $PASSWORD" http://host:8099/api/status | jq '.devices.with_updates'
 
 # healthy?
-curl -sf http://host:8099/api/status >/dev/null && echo ok || echo unhealthy
+curl -sf -H "Authorization: Bearer $PASSWORD" http://host:8099/api/status >/dev/null && echo ok || echo unhealthy
 ```
 
 ## Configuration
@@ -257,6 +287,7 @@ curl -sf http://host:8099/api/status >/dev/null && echo ok || echo unhealthy
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `FWUPD_WEBUI_PORT` | `8099` | Listen port |
+| `FWUPD_WEBUI_PASSWORD` | generated | Login password, and the Bearer token for `/api/status` |
 | `FWUPD_WEBUI_ENABLE_FLASHING` | `false` | Enables the firmware write path |
 | `FWUPD_WEBUI_REFRESH_INTERVAL_HOURS` | `24` | Age above which startup refetches LVFS metadata |
 | `FWUPD_WEBUI_TIMEOUT_SECONDS` | `120` | Hard timeout per fwupdtool invocation |
@@ -355,13 +386,18 @@ on Unraid is the bootable USB stick holding the OS and array configuration. Disa
 it makes read-only a structural property rather than a convention, and an integration
 test asserts the plugin reports itself disabled.
 
+## Security
+
+To report a security problem, see [`SECURITY.md`](SECURITY.md), which also lists what the app
+does and doesn't protect.
+
 ## Deployment scripts
 
 - [`deploy/install.sh`](deploy/install.sh) — native Debian/Ubuntu install with a systemd unit
 - [`deploy/proxmox-lxc.sh`](deploy/proxmox-lxc.sh) — creates a Proxmox LXC and installs into it
 - [`deploy/systemd/fwupd-webui.service`](deploy/systemd/fwupd-webui.service) — the unit itself
 - [`templates/fwupd-webui.xml`](templates/fwupd-webui.xml) — Unraid Community Applications template
-- [`.github/workflows/release.yml`](.github/workflows/release.yml) — GHCR publish, manual dispatch only
+- [`.github/workflows/release.yml`](.github/workflows/release.yml) — GHCR publish, on a version tag or by manual dispatch
 
 ## Design documents
 

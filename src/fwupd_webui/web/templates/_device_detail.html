@@ -1,4 +1,11 @@
 <div class="detail">
+  {% if view.device.is_test_platform_key %}
+  <p class="warn">
+    This machine's Secure Boot Platform Key is a vendor test key, not meant for production
+    use, so Secure Boot may not protect this machine even when it is on. Only the board
+    vendor's firmware or your own keys can replace it. This tool does not change it.
+  </p>
+  {% endif %}
   <dl>
     <dt>Device ID</dt><dd><code>{{ view.device.device_id }}</code></dd>
     <dt>Protocol</dt><dd>{{ view.device.protocol or "—" }}</dd>

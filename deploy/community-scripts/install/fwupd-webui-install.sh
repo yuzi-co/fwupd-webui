@@ -39,6 +39,10 @@ FWUPD_WEBUI_PORT=8099
 # not registered at all. Even when enabled, every flash requires typing the
 # device name, and system firmware (BIOS, UEFI capsule, SPI flash) is refused.
 FWUPD_WEBUI_ENABLE_FLASHING=false
+
+# Login password. Unset means one was generated at first start and saved in
+# /var/lib/fwupd/.webui-password.
+# FWUPD_WEBUI_PASSWORD=
 EOF
 chmod 0640 /etc/fwupd-webui/env
 msg_ok "Created Configuration"

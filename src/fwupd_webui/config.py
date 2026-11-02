@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 VALID_REMOTES = frozenset({"lvfs", "lvfs-testing"})
 
@@ -43,6 +43,8 @@ class Config:
     lvfs_remote: str = "lvfs"
     log_level: str = "info"
     enable_flashing: bool = False
+    # repr=False so that logging a Config cannot leak it.
+    password: str | None = field(default=None, repr=False)
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Config:
@@ -61,4 +63,5 @@ class Config:
             lvfs_remote=remote,
             log_level=e.get("FWUPD_WEBUI_LOG_LEVEL", "info"),
             enable_flashing=_bool_env(e, "FWUPD_WEBUI_ENABLE_FLASHING", False),
+            password=e.get("FWUPD_WEBUI_PASSWORD") or None,
         )

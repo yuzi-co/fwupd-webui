@@ -55,7 +55,12 @@ Held out deliberately, so they do not accrete during implementation:
 
 ## What fwupd gives us
 
-Established empirically against fwupd 2.1.7 in the shipped image, not from documentation:
+Established empirically against fwupd 2.1.7 in the shipped image, not from documentation.
+
+**Superseded:** the first point below turned out to be wrong for our purposes. `fwupdtool` does
+not check a file against the checksum in the signed metadata, and it installed an unsigned cab
+on a test device, so the app now downloads and verifies the file itself (`fwupd/download.py`).
+
 
 - `fwupdtool install FILE|URI [DEVICE-ID]` — **accepts an https URI directly** and downloads it
   itself, including jcat signature verification. Confirmed by observing `Downloading…: 100.0%`
