@@ -32,6 +32,19 @@ Firmware inventory and updates for your server. Lists every device fwupd can see
   <ExtraSearchTerms>fwupd firmware lvfs bios nvme ssd hba thunderbolt update</ExtraSearchTerms>
   <Requires>Privileged mode and host access to /sys, /dev and /run/udev. Internet access for LVFS metadata.</Requires>
   <Changes>
+### 0.2.1
+Lists upgrades that `get-updates` leaves out, marked unconfirmed. They cannot be
+flashed from here.
+
+Secure Boot key updates (`uefi_pk`, `uefi_kek`, `uefi_db`) are now refused.
+
+Fixes flashing, which could not have worked on real firmware: it read a field fwupd
+does not emit. The cab is now downloaded and checked against the SHA-256 in fwupd's
+signed metadata before it is installed. No real hardware has been flashed with this
+yet, so treat flashing as experimental.
+
+The browser now goes straight to the progress page when a flash starts.
+
 ### 0.2.0
 Clearer refusal for `uefi_dbx`. It is still never flashable, but the explanation
 now describes the real consequence -- a machine that stops booting until someone
@@ -58,8 +71,8 @@ First release. Firmware inventory with optional flashing, off by default.
        the firmware tooling underneath them changes. -->
   <DefaultTagDescription>Latest release. Tracks new versions as they ship.</DefaultTagDescription>
   <Branch>
-    <Tag>v0.2.0</Tag>
-    <TagDescription>Pinned to v0.2.0. Does not move.</TagDescription>
+    <Tag>v0.2.1</Tag>
+    <TagDescription>Pinned to v0.2.1. Does not move.</TagDescription>
   </Branch>
 
   <Config Name="WebUI Port" Target="8099" Default="8099" Mode="tcp"
