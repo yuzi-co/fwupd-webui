@@ -116,3 +116,32 @@ def test_release_requires_version():
 def test_missing_devices_key_raises():
     with pytest.raises(ValueError, match="Devices"):
         parse_devices({"SomethingElse": []})
+
+
+def _release(**fields):
+    return Release.model_validate({"Version": "1", **fields})
+
+
+def test_real_lvfs_release_fields_give_a_url_and_sha256():
+    """Field names and shapes as fwupd 2.0.20 reports them for a real LVFS release."""
+    sha256 = "103ebd21a803540296daff93fa7e1595bf323b4db78fbc6287aed945ab5965fb"
+    url = f"https://fwupd.org/downloads/{sha256}-KEK-AMI.cab"
+    release = _release(
+        Locations=[url], Checksum=["b713663b6c393736431300f7fe4a2870fbf79480", sha256]
+    )
+    assert release.download_url == url
+    assert release.sha256 == sha256
+
+
+def test_relative_locations_are_not_downloadable():
+    assert _release(Locations=["./fakedevice124.cab"]).download_url is None
+
+
+def test_sha1_alone_is_not_treated_as_sha256():
+    assert _release(Checksum=["fc0aabcf98bf3546c91270f2941f0acd0395dd79"]).sha256 is None
+
+
+def test_a_single_string_location_and_checksum_do_not_fail_parsing():
+    release = _release(Locations="https://x/f.cab", Checksum="a" * 64)
+    assert release.download_url == "https://x/f.cab"
+    assert release.sha256 == "a" * 64

@@ -174,10 +174,11 @@ class FwupdCli:
         on_progress: Callable[[ProgressLine], None] | None = None,
         on_log: Callable[[str], None] | None = None,
     ) -> None:
-        """Flash `target` (a local cab path or an https URI) onto `device_id`.
+        """Flash the local cab at `target` onto `device_id`.
 
-        fwupd downloads and jcat-verifies a URI itself, so no download or
-        signature handling belongs here.
+        Pass only a file already verified by download_verified. fwupdtool would
+        accept a URL, but it does not check the file against the checksum in the
+        signed metadata, and it installed an unsigned cab on a test device.
 
         Two ways this differs from every other method:
 

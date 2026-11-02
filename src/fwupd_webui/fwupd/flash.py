@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
+from pathlib import Path
 
 from fwupd_webui.fwupd.cli import FwupdCommandFailed, FwupdError, ProgressLine
+from fwupd_webui.fwupd.download import download_verified
 
 log = logging.getLogger(__name__)
 
@@ -51,8 +55,16 @@ class FlashManager:
     and is replaced only when the next flash starts.
     """
 
-    def __init__(self, cli):
+    def __init__(
+        self,
+        cli,
+        *,
+        work_dir: Path | None = None,
+        download: Callable[[str, str, Path], Path] = download_verified,
+    ):
         self._cli = cli
+        self._work_dir = work_dir
+        self._download = download
         self.job: FlashJob | None = None
 
     @property
@@ -66,9 +78,10 @@ class FlashManager:
 
     async def start(
         self,
-        target: str,
+        url: str,
         device_id: str,
         *,
+        sha256: str,
         device_name: str,
         version: str,
         allow_older: bool = False,
@@ -89,23 +102,32 @@ class FlashManager:
             del job.log[:-LOG_TAIL_LINES]
 
         job.status = FlashStatus.RUNNING
+        job.phase = "Downloading"
         try:
-            await asyncio.to_thread(
-                self._cli.install,
-                target,
-                device_id,
-                allow_older=allow_older,
-                allow_reinstall=allow_reinstall,
-                on_progress=on_progress,
-                on_log=on_log,
-            )
+            if self._work_dir is not None:
+                self._work_dir.mkdir(parents=True, exist_ok=True)
+            # In the work directory, not the system temp: /tmp can be a tmpfs, and
+            # a firmware file can be larger than the memory of a small container.
+            with tempfile.TemporaryDirectory(prefix="flash-", dir=self._work_dir) as tmp:
+                path = await asyncio.to_thread(self._download, url, sha256, Path(tmp))
+                await asyncio.to_thread(
+                    self._cli.install,
+                    str(path),
+                    device_id,
+                    allow_older=allow_older,
+                    allow_reinstall=allow_reinstall,
+                    on_progress=on_progress,
+                    on_log=on_log,
+                )
         except FwupdCommandFailed as exc:
             job.status = FlashStatus.FAILED
             job.exit_code = exc.exit_code
             job.error = exc.stderr or str(exc)
             log.warning("flash of %s failed during %s: %s", device_id, job.phase, exc)
             return job
-        except FwupdError as exc:
+        except (FwupdError, OSError) as exc:
+            # OSError too: a full disk here must fail the job, because a job left
+            # running sends every page to /flash until the process restarts.
             job.status = FlashStatus.FAILED
             job.error = str(exc)
             log.warning("flash of %s failed during %s: %s", device_id, job.phase, exc)
