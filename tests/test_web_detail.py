@@ -102,3 +102,47 @@ def test_detail_for_device_without_releases(client):
 
 def test_unknown_device_returns_404(client):
     assert client.get("/devices/does-not-exist").status_code == 404
+
+
+def _unconfirmed_client(enabled=True):
+    class S:
+        flash_manager = None
+        flashing_enabled = enabled
+
+        async def inventory(self):
+            return Inventory(
+                devices=[
+                    DeviceView(
+                        device=Device.model_validate(
+                            {"DeviceId": "kek", "Name": "KEK CA", "Plugin": "uefi_kek",
+                             "Version": "2011", "Flags": ["updatable"]}
+                        ),
+                        unconfirmed=[
+                            Release.model_validate(
+                                {"Version": "2023", "AppstreamId": "kek.ami.firmware",
+                                 "NameVariantSuffix": "AMI"}
+                            )
+                        ],
+                    )
+                ],
+                metadata=MetadataStatus(last_refresh=1.0, age_seconds=60.0, stale=False),
+                fwupd_version="2.0.20",
+                flashing_enabled=enabled,
+            )
+
+    config = Config.from_env({"FWUPD_WEBUI_ENABLE_FLASHING": "true" if enabled else "false"})
+    return TestClient(create_app(S(), config))
+
+
+def test_unconfirmed_release_is_labelled_and_has_no_flash_buttons():
+    body = _unconfirmed_client().get("/devices/kek").text
+    assert "2023" in body
+    assert "AMI" in body
+    assert "not confirmed" in body
+    assert "/confirm" not in body
+
+
+def test_table_marks_an_unconfirmed_update():
+    body = _unconfirmed_client().get("/").text
+    assert "2023" in body
+    assert "unconfirmed" in body

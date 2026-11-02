@@ -20,7 +20,8 @@
       <td>{{ view.device.version or "—" }}</td>
       <td>
         {% if view.has_update %}
-          <span class="badge">{{ view.available[0].version }}</span>
+          <span class="badge">{{ view.latest.version }}</span>
+          {% if not view.available %}<span class="muted">unconfirmed</span>{% endif %}
         {% else %}
           <span class="muted">up to date</span>
         {% endif %}

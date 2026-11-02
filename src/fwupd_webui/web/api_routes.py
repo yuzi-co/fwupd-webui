@@ -37,9 +37,9 @@ def _flash_payload(job) -> dict | None:
 def _updates_payload(inventory: Inventory) -> list[dict]:
     updates = []
     for view in inventory.devices:
-        if not view.available:
+        latest = view.latest
+        if latest is None:
             continue
-        latest = view.available[0]
         updates.append(
             {
                 "device_id": view.device.device_id,
@@ -48,6 +48,7 @@ def _updates_payload(inventory: Inventory) -> list[dict]:
                 "plugin": view.device.plugin,
                 "current_version": view.device.version,
                 "available_version": latest.version,
+                "confirmed": bool(view.available),
                 "urgency": latest.urgency,
                 "needs_reboot": "needs-reboot" in view.device.flags,
             }

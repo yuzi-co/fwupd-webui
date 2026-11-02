@@ -15,11 +15,18 @@ async def start_flash(
     version: str = Form(...),
     operation: str = Form("upgrade"),
     confirm_name: str | None = Form(None),
+    appstream_id: str | None = Form(None),
 ):
     service = request.app.state.service
     templates = request.app.state.templates
     try:
-        await service.start_flash(device_id, version, operation=operation, typed_name=confirm_name)
+        await service.start_flash(
+            device_id,
+            version,
+            operation=operation,
+            typed_name=confirm_name,
+            appstream_id=appstream_id,
+        )
     except (PermissionError, LookupError, RuntimeError) as exc:
         # A refusal is an expected outcome, not a server error.
         #

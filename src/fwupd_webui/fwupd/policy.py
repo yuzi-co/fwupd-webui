@@ -50,12 +50,18 @@ STORAGE_PLUGINS = frozenset({"ata", "emmc", "nvme", "scsi"})
 # efivars, so unblocking it here would require widening that grant: the two
 # decisions have to move together.
 #
+# `uefi_pk`, `uefi_kek` and `uefi_db` are blocked for the same reason as dbx. They
+# write authenticated Secure Boot variables through efivarfs, this tool cannot
+# undo those writes, and a bad one can need someone at the machine. They also sit
+# behind the same read-only efivars grant.
+#
 # The Docker image also disables uefi_capsule in its baked /etc/fwupd/fwupd.conf.
 # This check exists because that file is a property of the image, not of the
 # application: an LXC or bare-metal install uses the host's fwupd configuration,
 # where those plugins are live. Enforcing it here means the guarantee holds on
 # every deployment target and can be tested without fwupd present at all.
-BLOCKED_PLUGINS = frozenset({"uefi_capsule", "uefi_dbx", "mtd"})
+SECURE_BOOT_KEY_PLUGINS = frozenset({"uefi_pk", "uefi_kek", "uefi_db"})
+BLOCKED_PLUGINS = frozenset({"uefi_capsule", "uefi_dbx", "mtd"}) | SECURE_BOOT_KEY_PLUGINS
 
 # The refusal shown to the operator. dbx gets its own wording because telling
 # someone a revocation-list append costs them the motherboard is simply untrue,
@@ -73,6 +79,20 @@ _DBX_REFUSAL = (
     "someone disables Secure Boot in firmware setup. Use your system's own "
     "firmware update path."
 )
+_SECURE_BOOT_KEY_REFUSAL = (
+    "The {plugin} plugin changes the UEFI Secure Boot keys. This tool never does "
+    "that: it cannot undo the change, and a bad one can leave this machine unable "
+    "to boot until someone fixes Secure Boot in firmware setup. Use your system's "
+    "own firmware update path."
+)
+
+
+def _refusal(plugin: str) -> str:
+    if plugin == "uefi_dbx":
+        return _DBX_REFUSAL
+    if plugin in SECURE_BOOT_KEY_PLUGINS:
+        return _SECURE_BOOT_KEY_REFUSAL.format(plugin=plugin)
+    return _FIRMWARE_REFUSAL.format(plugin=plugin)
 
 
 @dataclass(frozen=True)
@@ -108,11 +128,7 @@ def evaluate(device: Device, *, enabled: bool) -> Permission:
         return Permission(
             flashable=False,
             is_storage=is_storage,
-            reason=(
-                _DBX_REFUSAL
-                if plugin == "uefi_dbx"
-                else _FIRMWARE_REFUSAL.format(plugin=plugin)
-            ),
+            reason=_refusal(plugin),
         )
     if not device.updatable:
         return Permission(

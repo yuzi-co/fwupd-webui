@@ -14,6 +14,7 @@ class Release(BaseModel):
 
     version: str = Field(alias="Version")
     appstream_id: str | None = Field(default=None, alias="AppstreamId")
+    variant: str | None = Field(default=None, alias="NameVariantSuffix")
     remote_id: str | None = Field(default=None, alias="RemoteId")
     summary: str | None = Field(default=None, alias="Summary")
     description: str | None = Field(default=None, alias="Description")

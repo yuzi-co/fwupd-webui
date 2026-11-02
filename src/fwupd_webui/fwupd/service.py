@@ -26,11 +26,20 @@ STAMP_FILENAME = ".webui-last-refresh"
 @dataclass
 class DeviceView:
     device: Device
+    # Releases `get-updates` confirmed for this device. These can be flashed.
     available: list[Release] = field(default_factory=list)
+    # Releases `get-devices` marks is-upgrade but `get-updates` left out. Shown so
+    # the update is not lost, but never flashed: see FwupdService.inventory.
+    unconfirmed: list[Release] = field(default_factory=list)
 
     @property
     def has_update(self) -> bool:
-        return bool(self.available)
+        return bool(self.available or self.unconfirmed)
+
+    @property
+    def latest(self) -> Release | None:
+        releases = self.available or self.unconfirmed
+        return releases[0] if releases else None
 
 
 @dataclass
@@ -49,20 +58,29 @@ class Inventory:
     flashing_enabled: bool = False
 
 
-def _dedupe_versions(releases: list[Release]) -> list[Release]:
-    """Collapse releases that repeat a version, keeping the first.
+def _release_key(release: Release) -> tuple[str, str | None]:
+    return (release.version, release.appstream_id)
+
+
+def _dedupe_releases(releases: list[Release]) -> list[Release]:
+    """Collapse releases that repeat a version of one component, keeping the first.
 
     fwupd can offer the same version more than once when it appears in several
     remotes; the synthetic test device reports 1.2.4 twice. Listing it twice
     with an identical changelog reads as a UI fault, and picking between two
     identical entries is a choice nobody can make meaningfully.
+
+    The AppStream ID is part of the key because one version can also mean two
+    different files: KEK CA 2023 ships as separate AMI and ASUS components.
+    Those are a real choice, and keeping only the first could keep the wrong one.
     """
-    seen: set[str] = set()
+    seen: set[tuple[str, str | None]] = set()
     unique: list[Release] = []
     for release in releases:
-        if release.version in seen:
+        key = _release_key(release)
+        if key in seen:
             continue
-        seen.add(release.version)
+        seen.add(key)
         unique.append(release)
     return unique
 
@@ -133,11 +151,24 @@ class FwupdService:
             updated = []
             update_error = str(exc)
 
+        # `get-updates` only reports devices with fwupd's `supported` flag, and a
+        # freshly started engine can leave that flag off a device whose releases it
+        # still lists. Every fwupdtool call here is a fresh engine, so relying on
+        # `get-updates` alone hid an update that a long-running daemon was showing:
+        # KEK CA on a Proxmox host. Anything marked is-upgrade that `get-updates`
+        # did not return is therefore shown, but kept apart, because this code
+        # cannot tell a flag that was left off from a release fwupd rejected.
         releases_by_id = {d.device_id: d.releases for d in updated}
-        views = [
-            DeviceView(device=d, available=_dedupe_versions(releases_by_id.get(d.device_id, [])))
-            for d in devices
-        ]
+        views = []
+        for d in devices:
+            available = _dedupe_releases(releases_by_id.get(d.device_id, []))
+            confirmed = {_release_key(r) for r in available}
+            unconfirmed = [
+                r
+                for r in _dedupe_releases(d.releases)
+                if "is-upgrade" in r.flags and _release_key(r) not in confirmed
+            ]
+            views.append(DeviceView(device=d, available=available, unconfirmed=unconfirmed))
         views.sort(key=lambda v: (not v.has_update, v.device.display_name.lower()))
 
         return Inventory(
@@ -204,6 +235,7 @@ class FwupdService:
         *,
         operation: str,
         typed_name: str | None,
+        appstream_id: str | None = None,
     ) -> FlashJob:
         """Validate policy, then run the flash under the hardware lock.
 
@@ -226,9 +258,33 @@ class FwupdService:
                 f"Type the device name to confirm. Expected: {confirmation_phrase(device)}"
             )
 
-        release = next((r for r in device.releases if r.version == version), None)
-        if release is None:
+        matches = [
+            r
+            for r in device.releases
+            if r.version == version and (appstream_id is None or r.appstream_id == appstream_id)
+        ]
+        if not matches:
             raise LookupError(f"device {device_id} has no release {version}")
+        if len({r.appstream_id for r in matches}) > 1:
+            raise LookupError(
+                f"device {device_id} has more than one firmware file for version {version}. "
+                "Choose one from the device page."
+            )
+        release = matches[0]
+
+        try:
+            updates = await self._call(self._cli.get_updates)
+        except FwupdError as exc:
+            raise PermissionError(f"fwupd could not check this release: {exc}") from exc
+        confirmed = {
+            _release_key(r) for d in updates if d.device_id == device_id for r in d.releases
+        }
+        if _release_key(release) not in confirmed:
+            raise PermissionError(
+                f"Release {version} is not confirmed by fwupd for this device, so it "
+                "will not be flashed from here."
+            )
+
         if not release.uri:
             raise LookupError(f"release {version} has no download URI")
 
