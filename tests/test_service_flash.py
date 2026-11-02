@@ -1,4 +1,6 @@
+import asyncio
 import io
+import threading
 from pathlib import Path
 
 import pytest
@@ -24,6 +26,12 @@ def release(
         "Flags": list(flags),
         **rest,
     }
+
+
+async def flash_to_end(svc, *args, **kwargs):
+    job = await svc.start_flash(*args, **kwargs)
+    await svc._flash_task
+    return job
 
 
 def recording_download(svc):
@@ -93,7 +101,7 @@ def service(tmp_path, *, enabled=True, plugin="logitech_hidpp", releases=None):
 
 async def test_flashing_with_the_typed_name_succeeds(tmp_path):
     svc = service(tmp_path)
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    job = await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
 
     assert job.status is FlashStatus.SUCCEEDED
     assert svc.downloads == [("https://lvfs/a.cab", SHA_A)]
@@ -105,7 +113,7 @@ async def test_flashing_with_the_typed_name_succeeds(tmp_path):
 async def test_flashing_is_refused_when_disabled(tmp_path):
     svc = service(tmp_path, enabled=False)
     with pytest.raises(PermissionError, match="FWUPD_WEBUI_ENABLE_FLASHING"):
-        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+        await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
 
 
 async def test_every_device_is_refused_without_the_typed_name(tmp_path):
@@ -113,50 +121,50 @@ async def test_every_device_is_refused_without_the_typed_name(tmp_path):
     for plugin in ("logitech_hidpp", "ata", "nvme"):
         svc = service(tmp_path, plugin=plugin)
         with pytest.raises(PermissionError, match="Type the device name"):
-            await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=None)
+            await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=None)
 
 
 async def test_storage_device_proceeds_with_the_correct_typed_name(tmp_path):
     svc = service(tmp_path, plugin="ata")
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    job = await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
     assert job.status is FlashStatus.SUCCEEDED
 
 
 async def test_a_near_miss_name_is_refused(tmp_path):
     svc = service(tmp_path, plugin="ata")
     with pytest.raises(PermissionError):
-        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name="Unifying")
+        await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name="Unifying")
 
 
 async def test_downgrade_sets_allow_older(tmp_path):
     svc = service(tmp_path)
-    await svc.start_flash("dev-1", "2.0", operation="downgrade", typed_name=NAME)
+    await flash_to_end(svc, "dev-1", "2.0", operation="downgrade", typed_name=NAME)
     assert svc._stub_cli.installs[0][2] is True
 
 
 async def test_reinstall_sets_allow_reinstall(tmp_path):
     svc = service(tmp_path)
-    await svc.start_flash("dev-1", "2.0", operation="reinstall", typed_name=NAME)
+    await flash_to_end(svc, "dev-1", "2.0", operation="reinstall", typed_name=NAME)
     assert svc._stub_cli.installs[0][3] is True
 
 
 async def test_unknown_device_is_rejected(tmp_path):
     svc = service(tmp_path)
     with pytest.raises(LookupError):
-        await svc.start_flash("nope", "2.0", operation="upgrade", typed_name=NAME)
+        await flash_to_end(svc, "nope", "2.0", operation="upgrade", typed_name=NAME)
 
 
 async def test_unknown_version_is_rejected(tmp_path):
     svc = service(tmp_path)
     with pytest.raises(LookupError, match="9.9"):
-        await svc.start_flash("dev-1", "9.9", operation="upgrade", typed_name=NAME)
+        await flash_to_end(svc, "dev-1", "9.9", operation="upgrade", typed_name=NAME)
 
 
 async def test_staged_firmware_is_detected(tmp_path):
     """The stub device still reports its old version after the flash, which is
     what every needs-reboot device on the deployed host does."""
     svc = service(tmp_path)
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    job = await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
     assert job.staged is True
     assert job.installed_version == "1.0"
 
@@ -169,7 +177,7 @@ async def test_a_live_update_is_reported_as_live(tmp_path):
         cli._devices = [make_device(version="2.0")]
 
     cli.get_devices_after_flash = bump_version
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    job = await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
     assert job.staged is False
     assert job.installed_version == "2.0"
 
@@ -183,7 +191,7 @@ async def test_a_failed_re_enumeration_does_not_fail_the_flash(tmp_path):
         raise FwupdCommandFailed(1, "enumeration broke")
 
     svc._stub_cli.get_devices_after_flash = boom
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    job = await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
 
     assert job.status is FlashStatus.SUCCEEDED
     assert job.staged is None
@@ -193,11 +201,9 @@ async def test_start_flash_does_not_deadlock_on_the_service_lock(tmp_path):
     """Regression guard. The post-flash re-enumeration runs while the hardware
     lock is already held; routing it through self._call would try to acquire
     that same lock and hang forever."""
-    import asyncio
-
     svc = service(tmp_path)
     job = await asyncio.wait_for(
-        svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME),
+        flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME),
         timeout=5,
     )
     assert job.status is FlashStatus.SUCCEEDED
@@ -206,7 +212,7 @@ async def test_start_flash_does_not_deadlock_on_the_service_lock(tmp_path):
 async def test_the_lock_is_released_after_a_flash(tmp_path):
     """A flash must not leave the lock held, or every later page would hang."""
     svc = service(tmp_path)
-    await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
     inventory = await svc.inventory()
     assert len(inventory.devices) == 1
 
@@ -288,14 +294,14 @@ def variant_service(tmp_path, *, updates=None):
 async def test_ambiguous_version_is_refused_rather_than_guessed(tmp_path):
     svc = variant_service(tmp_path)
     with pytest.raises(LookupError, match="more than one"):
-        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+        await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
     assert svc._stub_cli.installs == []
 
 
 async def test_the_chosen_variant_is_the_one_flashed(tmp_path):
     svc = variant_service(tmp_path)
-    await svc.start_flash(
-        "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
+    await flash_to_end(
+        svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
     )
     assert svc.downloads == [("https://lvfs/b.cab", SHA_B)]
 
@@ -304,8 +310,8 @@ async def test_release_get_updates_did_not_confirm_is_refused(tmp_path):
     """The page hides the button for these. This holds whatever the page offered."""
     svc = variant_service(tmp_path, updates=[])
     with pytest.raises(PermissionError, match="not confirmed"):
-        await svc.start_flash(
-            "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
+        await flash_to_end(
+            svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
         )
     assert svc._stub_cli.installs == []
 
@@ -317,8 +323,8 @@ async def test_flash_is_refused_when_confirmation_cannot_be_checked(tmp_path):
     svc = variant_service(tmp_path)
     svc._stub_cli.get_updates = broken
     with pytest.raises(PermissionError, match="could not check"):
-        await svc.start_flash(
-            "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
+        await flash_to_end(
+            svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME, appstream_id="b.firmware"
         )
     assert svc._stub_cli.installs == []
 
@@ -335,7 +341,7 @@ async def test_flash_is_refused_when_confirmation_cannot_be_checked(tmp_path):
 async def test_a_release_that_cannot_be_verified_is_refused(tmp_path, releases, error, message):
     svc = service(tmp_path, releases=releases)
     with pytest.raises(error, match=message):
-        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+        await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
     assert svc.downloads == []
     assert svc._stub_cli.installs == []
 
@@ -351,9 +357,103 @@ async def test_the_real_download_rejects_the_wrong_file_before_any_install(tmp_p
     svc = service(tmp_path)
     svc.flash_manager._download = download_verified
 
-    job = await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    job = await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
 
     assert job.status is FlashStatus.FAILED
     assert "checksum mismatch" in job.error
     assert svc._stub_cli.installs == []
     assert [p for p in tmp_path.iterdir() if p.name.startswith("flash-")] == []
+
+
+def blocked_download(svc):
+    """A download that stays in progress until the returned event is set."""
+    release_download = threading.Event()
+    fake = svc.flash_manager._download
+
+    def wait_then_fake(url, sha256, dest_dir):
+        assert release_download.wait(timeout=5)
+        return fake(url, sha256, dest_dir)
+
+    svc.flash_manager._download = wait_then_fake
+    return release_download
+
+
+async def test_start_flash_returns_while_the_flash_is_still_running(tmp_path):
+    svc = service(tmp_path)
+    release_download = blocked_download(svc)
+
+    job = await asyncio.wait_for(
+        svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME), timeout=2
+    )
+    assert job.finished is False
+    assert svc.flash_manager.active is True
+    assert svc._stub_cli.installs == []
+
+    release_download.set()
+    await svc._flash_task
+    assert job.status is FlashStatus.SUCCEEDED
+    assert len(svc._stub_cli.installs) == 1
+
+
+async def test_a_second_flash_is_refused_while_one_is_running(tmp_path):
+    svc = service(tmp_path)
+    release_download = blocked_download(svc)
+    await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+
+    with pytest.raises(RuntimeError, match="already running"):
+        await asyncio.wait_for(
+            svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME), timeout=2
+        )
+
+    release_download.set()
+    await svc._flash_task
+    assert len(svc._stub_cli.installs) == 1
+
+
+async def test_a_double_click_writes_once(tmp_path):
+    """Both requests arrive before either has finished validating. The second must
+    not wait and then flash again on a device still reporting its old version."""
+    svc = service(tmp_path)
+    first = asyncio.create_task(
+        svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    )
+    await asyncio.sleep(0)
+
+    with pytest.raises(RuntimeError, match="already running"):
+        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+
+    await first
+    await svc._flash_task
+    assert len(svc._stub_cli.installs) == 1
+
+
+async def test_a_refused_flash_does_not_block_the_next_one(tmp_path):
+    svc = service(tmp_path)
+    with pytest.raises(PermissionError):
+        await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name="wrong")
+
+    job = await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
+    assert job.status is FlashStatus.SUCCEEDED
+
+
+async def test_the_status_api_can_answer_during_a_flash_with_nothing_cached_before(tmp_path):
+    svc = service(tmp_path)
+    release_download = blocked_download(svc)
+    await svc.start_flash("dev-1", "2.0", operation="upgrade", typed_name=NAME)
+
+    inventory = await asyncio.wait_for(svc.cached_inventory(), timeout=2)
+    assert len(inventory.devices) == 1
+
+    release_download.set()
+    await svc._flash_task
+
+
+async def test_the_outcome_is_recorded_before_the_job_reads_as_finished(tmp_path):
+    svc = service(tmp_path)
+    seen = []
+    svc._stub_cli.get_devices_after_flash = lambda: seen.append(svc.flash_manager.job.finished)
+
+    await flash_to_end(svc, "dev-1", "2.0", operation="upgrade", typed_name=NAME)
+
+    assert seen == [False]
+    assert svc.flash_manager.job.staged is True

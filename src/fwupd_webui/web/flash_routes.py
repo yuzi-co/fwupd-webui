@@ -3,9 +3,22 @@ from __future__ import annotations
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
+from fwupd_webui.fwupd.cli import FwupdError
+from fwupd_webui.fwupd.service import Inventory
+from fwupd_webui.web.routes import _flash_in_progress, _placeholder_inventory
+
 # Registered on the app only when FWUPD_WEBUI_ENABLE_FLASHING is set, so every
 # route here is a genuine 404 otherwise rather than a handler that refuses.
 flash_router = APIRouter()
+
+
+async def _page_inventory(service) -> Inventory:
+    """base.html needs an inventory, and no flash page may wait on the hardware
+    lock to get one, or the page would hang until the flash ended."""
+    try:
+        return await service.cached_inventory()
+    except FwupdError as exc:
+        return _placeholder_inventory(str(exc))
 
 
 @flash_router.post("/flash")
@@ -19,6 +32,9 @@ async def start_flash(
 ):
     service = request.app.state.service
     templates = request.app.state.templates
+    # Before validation, which enumerates and would wait behind the running flash.
+    if _flash_in_progress(service):
+        return RedirectResponse("/flash", status_code=303)
     try:
         await service.start_flash(
             device_id,
@@ -27,7 +43,7 @@ async def start_flash(
             typed_name=confirm_name,
             appstream_id=appstream_id,
         )
-    except (PermissionError, LookupError, RuntimeError) as exc:
+    except (PermissionError, LookupError, RuntimeError, FwupdError) as exc:
         # A refusal is an expected outcome, not a server error.
         #
         # This is a full page, not the banner fragment. The confirm step is a
@@ -37,7 +53,7 @@ async def start_flash(
         return templates.TemplateResponse(
             request=request,
             name="flash_refused.html",
-            context={"message": str(exc), "inventory": await service.cached_inventory()},
+            context={"message": str(exc), "inventory": await _page_inventory(service)},
             status_code=400,
         )
     return RedirectResponse("/flash", status_code=303)
@@ -52,7 +68,7 @@ async def flash_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="flash_progress.html",
-        context={"job": service.flash_manager.job, "inventory": await service.inventory()},
+        context={"job": service.flash_manager.job, "inventory": await _page_inventory(service)},
     )
 
 

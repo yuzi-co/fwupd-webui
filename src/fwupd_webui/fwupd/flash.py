@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import tempfile
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
-from fwupd_webui.fwupd.cli import FwupdCommandFailed, FwupdError, ProgressLine
+from fwupd_webui.fwupd.cli import FwupdCommandFailed, ProgressLine
 from fwupd_webui.fwupd.download import download_verified
 
 log = logging.getLogger(__name__)
@@ -76,22 +76,39 @@ class FlashManager:
             raise RuntimeError("cannot dismiss a running job")
         self.job = None
 
-    async def start(
-        self,
-        url: str,
-        device_id: str,
-        *,
-        sha256: str,
-        device_name: str,
-        version: str,
-        allow_older: bool = False,
-        allow_reinstall: bool = False,
-    ) -> FlashJob:
+    def begin(self, device_id: str, *, device_name: str, version: str) -> FlashJob:
+        """Claim the single job slot and return the job, without doing any work.
+
+        Synchronous, so nothing can run between the check and the claim, and so
+        the job is visible to the progress page before run() has started.
+        """
         if self.active:
             raise RuntimeError("a flash is already running")
 
-        job = FlashJob(device_id=device_id, device_name=device_name, version=version)
+        job = FlashJob(
+            device_id=device_id,
+            device_name=device_name,
+            version=version,
+            status=FlashStatus.RUNNING,
+        )
         self.job = job
+        return job
+
+    async def run(
+        self,
+        job: FlashJob,
+        url: str,
+        *,
+        sha256: str,
+        allow_older: bool = False,
+        allow_reinstall: bool = False,
+        on_success: Callable[[], Awaitable[None]] | None = None,
+    ) -> None:
+        """Download, verify and install, recording the outcome on `job`.
+
+        on_success runs before the job is marked finished, because the progress
+        page stops polling at that point and would never show what it records.
+        """
 
         def on_progress(progress: ProgressLine) -> None:
             job.phase = progress.phase
@@ -101,7 +118,6 @@ class FlashManager:
             job.log.append(line)
             del job.log[:-LOG_TAIL_LINES]
 
-        job.status = FlashStatus.RUNNING
         job.phase = "Downloading"
         try:
             if self._work_dir is not None:
@@ -113,26 +129,32 @@ class FlashManager:
                 await asyncio.to_thread(
                     self._cli.install,
                     str(path),
-                    device_id,
+                    job.device_id,
                     allow_older=allow_older,
                     allow_reinstall=allow_reinstall,
                     on_progress=on_progress,
                     on_log=on_log,
                 )
         except FwupdCommandFailed as exc:
-            job.status = FlashStatus.FAILED
             job.exit_code = exc.exit_code
             job.error = exc.stderr or str(exc)
-            log.warning("flash of %s failed during %s: %s", device_id, job.phase, exc)
-            return job
-        except (FwupdError, OSError) as exc:
-            # OSError too: a full disk here must fail the job, because a job left
-            # running sends every page to /flash until the process restarts.
             job.status = FlashStatus.FAILED
+            log.warning("flash of %s failed during %s: %s", job.device_id, job.phase, exc)
+            return
+        except Exception as exc:
+            # Everything, not only FwupdError. This runs in a background task, so
+            # nothing else would report it, and a job left running sends every page
+            # to /flash until the process restarts.
             job.error = str(exc)
-            log.warning("flash of %s failed during %s: %s", device_id, job.phase, exc)
-            return job
+            job.status = FlashStatus.FAILED
+            log.warning("flash of %s failed during %s: %s", job.device_id, job.phase, exc)
+            return
+
+        if on_success is not None:
+            try:
+                await on_success()
+            except Exception:
+                log.warning("post-flash step failed for %s", job.device_id, exc_info=True)
 
         job.status = FlashStatus.SUCCEEDED
-        log.info("flash of %s completed", device_id)
-        return job
+        log.info("flash of %s completed", job.device_id)

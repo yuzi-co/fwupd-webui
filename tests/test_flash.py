@@ -49,10 +49,16 @@ def manager(cli) -> FlashManager:
     return FlashManager(cli, download=fake_download)
 
 
+async def start(mgr, url, device_id, *, sha256, device_name, version, **options):
+    job = mgr.begin(device_id, device_name=device_name, version=version)
+    await mgr.run(job, url, sha256=sha256, **options)
+    return job
+
+
 async def test_a_successful_flash_ends_succeeded():
     mgr = manager(FakeCli(progress=[("Writing", 50.0), ("Verifying", 100.0)]))
-    job = await mgr.start(
-        "https://lvfs/f.cab", "dev-1", sha256=SHA, device_name="NVMe", version="2.0"
+    job = await start(
+        mgr, "https://lvfs/f.cab", "dev-1", sha256=SHA, device_name="NVMe", version="2.0"
     )
 
     assert job.status is FlashStatus.SUCCEEDED
@@ -73,7 +79,7 @@ async def test_progress_is_visible_on_the_job_while_running():
             seen.append((mgr.job.phase, mgr.job.percent))
 
     mgr._cli.install = spy
-    await mgr.start("https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
+    await start(mgr, "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
 
     assert seen == [("Writing", 10.0), ("Writing", 90.0)]
 
@@ -83,8 +89,8 @@ async def test_a_failed_flash_records_exit_code_and_last_phase():
         progress=[("Writing", 40.0)],
         error=FwupdCommandFailed(3, "device is locked"),
     )
-    job = await manager(cli).start(
-        "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1"
+    job = await start(
+        manager(cli), "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1"
     )
 
     assert job.status is FlashStatus.FAILED
@@ -95,8 +101,8 @@ async def test_a_failed_flash_records_exit_code_and_last_phase():
 
 async def test_log_lines_are_retained_for_the_failure_view():
     cli = FakeCli(logs=["WARNING: ESP not found"], error=FwupdCommandFailed(1, "boom"))
-    job = await manager(cli).start(
-        "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1"
+    job = await start(
+        manager(cli), "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1"
     )
 
     assert any("ESP not found" in line for line in job.log)
@@ -104,30 +110,30 @@ async def test_log_lines_are_retained_for_the_failure_view():
 
 async def test_only_one_job_runs_at_a_time():
     mgr = manager(FakeCli())
-    await mgr.start("https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
+    await start(mgr, "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
     mgr.job.status = FlashStatus.RUNNING  # simulate an in-flight job
 
     with pytest.raises(RuntimeError, match="already running"):
-        await mgr.start("https://lvfs/f.cab", "d2", sha256=SHA, device_name="N", version="1")
+        await start(mgr, "https://lvfs/f.cab", "d2", sha256=SHA, device_name="N", version="1")
 
 
 async def test_active_is_false_once_a_job_finishes():
     mgr = manager(FakeCli())
-    await mgr.start("https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
+    await start(mgr, "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
     assert mgr.active is False
     assert mgr.job is not None, "a finished job is retained so the result stays readable"
 
 
 async def test_dismiss_clears_the_finished_job():
     mgr = manager(FakeCli())
-    await mgr.start("https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
+    await start(mgr, "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
     mgr.dismiss()
     assert mgr.job is None
 
 
 async def test_dismiss_refuses_while_a_job_runs():
     mgr = manager(FakeCli())
-    await mgr.start("https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
+    await start(mgr, "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
     mgr.job.status = FlashStatus.RUNNING
 
     with pytest.raises(RuntimeError):
@@ -136,7 +142,8 @@ async def test_dismiss_refuses_while_a_job_runs():
 
 async def test_operation_flags_reach_the_cli():
     cli = FakeCli()
-    await manager(cli).start(
+    await start(
+        manager(cli),
         "https://lvfs/f.cab",
         "d",
         sha256=SHA,
@@ -163,8 +170,8 @@ async def test_the_downloaded_file_is_what_gets_installed_and_is_then_removed():
         assert Path(target).read_bytes() == b"cab"
 
     cli.install = spy
-    job = await manager(cli).start(
-        "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1"
+    job = await start(
+        manager(cli), "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1"
     )
 
     assert job.status is FlashStatus.SUCCEEDED
@@ -179,8 +186,13 @@ async def test_the_url_and_checksum_reach_the_download():
         calls.append((url, sha256))
         return fake_download(url, sha256, dest_dir)
 
-    await FlashManager(FakeCli(), download=spy).start(
-        "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1"
+    await start(
+        FlashManager(FakeCli(), download=spy),
+        "https://lvfs/f.cab",
+        "d",
+        sha256=SHA,
+        device_name="N",
+        version="1",
     )
     assert calls == [("https://lvfs/f.cab", SHA)]
 
@@ -190,8 +202,13 @@ async def test_a_failed_download_fails_the_job_and_never_installs():
         raise FirmwareDownloadError("checksum mismatch")
 
     cli = FakeCli()
-    job = await FlashManager(cli, download=bad_download).start(
-        "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1"
+    job = await start(
+        FlashManager(cli, download=bad_download),
+        "https://lvfs/f.cab",
+        "d",
+        sha256=SHA,
+        device_name="N",
+        version="1",
     )
 
     assert job.status is FlashStatus.FAILED
@@ -205,7 +222,7 @@ async def test_a_disk_error_fails_the_job_instead_of_leaving_it_running():
         raise OSError("No space left on device")
 
     mgr = FlashManager(FakeCli(), download=full_disk)
-    job = await mgr.start("https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
+    job = await start(mgr, "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
 
     assert job.status is FlashStatus.FAILED
     assert mgr.active is False
@@ -217,9 +234,73 @@ async def test_the_file_is_kept_in_the_work_directory(tmp_path):
     cli = FakeCli()
     cli.install = lambda target, device_id, **kwargs: seen.append(Path(target))
 
-    await FlashManager(cli, work_dir=work_dir, download=fake_download).start(
-        "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1"
+    await start(
+        FlashManager(cli, work_dir=work_dir, download=fake_download),
+        "https://lvfs/f.cab",
+        "d",
+        sha256=SHA,
+        device_name="N",
+        version="1",
     )
 
     assert work_dir in seen[0].parents
     assert list(work_dir.iterdir()) == []
+
+
+async def test_begin_makes_the_job_visible_before_any_work_starts():
+    cli = FakeCli()
+    mgr = manager(cli)
+    job = mgr.begin("d", device_name="N", version="1")
+
+    assert mgr.job is job
+    assert mgr.active is True
+    assert cli.calls == []
+
+
+async def test_on_success_runs_before_the_job_is_finished():
+    """The progress page stops polling at finished, so anything recorded after
+    that would never be shown."""
+    mgr = manager(FakeCli())
+    seen = []
+
+    async def record():
+        seen.append(mgr.job.finished)
+
+    await start(
+        mgr,
+        "https://lvfs/f.cab",
+        "d",
+        sha256=SHA,
+        device_name="N",
+        version="1",
+        on_success=record,
+    )
+    assert seen == [False]
+    assert mgr.job.status is FlashStatus.SUCCEEDED
+
+
+async def test_a_failing_on_success_does_not_fail_the_flash():
+    async def broken():
+        raise ValueError("could not re-read the device")
+
+    job = await start(
+        manager(FakeCli()),
+        "https://lvfs/f.cab",
+        "d",
+        sha256=SHA,
+        device_name="N",
+        version="1",
+        on_success=broken,
+    )
+    assert job.status is FlashStatus.SUCCEEDED
+
+
+async def test_an_unexpected_error_fails_the_job_instead_of_leaving_it_running():
+    def broken(url, sha256, dest_dir):
+        raise ValueError("unexpected")
+
+    mgr = FlashManager(FakeCli(), download=broken)
+    job = await start(mgr, "https://lvfs/f.cab", "d", sha256=SHA, device_name="N", version="1")
+
+    assert job.status is FlashStatus.FAILED
+    assert mgr.active is False

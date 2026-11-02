@@ -9,7 +9,7 @@ from pathlib import Path
 
 from fwupd_webui.config import Config
 from fwupd_webui.fwupd.cli import FwupdCli, FwupdError
-from fwupd_webui.fwupd.flash import FlashJob, FlashManager, FlashStatus
+from fwupd_webui.fwupd.flash import FlashJob, FlashManager
 from fwupd_webui.fwupd.models import Device, Release
 from fwupd_webui.fwupd.policy import (
     Permission,
@@ -108,6 +108,9 @@ class FwupdService:
         self._lock = asyncio.Lock()
         self.flash_manager = FlashManager(cli, work_dir=self._state_dir)
         self._cached: tuple[float, Inventory] | None = None
+        # Held so the running flash cannot be garbage collected.
+        self._flash_task: asyncio.Task[None] | None = None
+        self._flash_starting = False
 
     async def _call(self, fn, *args):
         async with self._lock:
@@ -237,12 +240,42 @@ class FwupdService:
         typed_name: str | None,
         appstream_id: str | None = None,
     ) -> FlashJob:
-        """Validate policy, then run the flash under the hardware lock.
+        """Validate policy, then start the flash and return without waiting for it.
+
+        The flash runs in a background task under the hardware lock. Waiting here
+        would leave the browser on a blank page for the whole write, with the
+        progress page out of reach.
 
         Policy is enforced here rather than in the route, so it holds whatever
         the HTML offered. Raises PermissionError when policy refuses,
         LookupError when the device or release does not exist.
         """
+        # A double click sends two requests. The second must not reach validation:
+        # it would wait behind the first flash, then pass and write again on any
+        # device that still reports the old version until it reboots.
+        if self._flash_starting or self.flash_manager.active:
+            raise RuntimeError("a flash is already running")
+        self._flash_starting = True
+        try:
+            return await self._validate_and_begin(
+                device_id,
+                version,
+                operation=operation,
+                typed_name=typed_name,
+                appstream_id=appstream_id,
+            )
+        finally:
+            self._flash_starting = False
+
+    async def _validate_and_begin(
+        self,
+        device_id: str,
+        version: str,
+        *,
+        operation: str,
+        typed_name: str | None,
+        appstream_id: str | None,
+    ) -> FlashJob:
         devices = await self._call(self._cli.get_devices)
         device = next((d for d in devices if d.device_id == device_id), None)
         if device is None:
@@ -297,19 +330,40 @@ class FwupdService:
         if not release.sha256:
             raise LookupError(f"release {version} has no SHA-256 checksum to verify against")
 
-        async with self._lock:
-            job = await self.flash_manager.start(
+        # Enumerating waits for the lock, so nothing can during the flash. Capturing
+        # now gives the pages and the monitoring API something to serve until then.
+        await self.cached_inventory()
+
+        job = self.flash_manager.begin(device_id, device_name=device.display_name, version=version)
+        self._flash_task = asyncio.create_task(
+            self._run_flash(
+                job,
                 release.download_url,
-                device_id,
-                sha256=release.sha256,
-                device_name=device.display_name,
-                version=version,
+                release.sha256,
                 allow_older=operation == "downgrade",
                 allow_reinstall=operation == "reinstall",
             )
-            if job.status is FlashStatus.SUCCEEDED:
-                await self._record_outcome(job, device_id, version)
-            return job
+        )
+        return job
+
+    async def _run_flash(
+        self,
+        job: FlashJob,
+        url: str,
+        sha256: str,
+        *,
+        allow_older: bool,
+        allow_reinstall: bool,
+    ) -> None:
+        async with self._lock:
+            await self.flash_manager.run(
+                job,
+                url,
+                sha256=sha256,
+                allow_older=allow_older,
+                allow_reinstall=allow_reinstall,
+                on_success=lambda: self._record_outcome(job, job.device_id, job.version),
+            )
 
     async def _record_outcome(self, job: FlashJob, device_id: str, version: str) -> None:
         """Re-enumerate once so the result view can say whether the firmware is
