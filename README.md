@@ -4,12 +4,12 @@
 [![Release](https://img.shields.io/github/v/release/yuzi-co/fwupd-webui)](https://github.com/yuzi-co/fwupd-webui/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A web UI for [fwupd](https://fwupd.org). It lists every device fwupd can enumerate —
-NVMe drives, SATA disks, HBAs, network cards, Thunderbolt controllers, docks, BIOS flash
-— with current firmware versions and any updates available from LVFS.
+A web UI for [fwupd](https://fwupd.org). It lists every device fwupd can enumerate (NVMe
+drives, SATA disks, HBAs, network cards, Thunderbolt controllers, docks, BIOS flash) with
+current firmware versions and any updates available from LVFS.
 
-Runs on any Linux host: as a Docker container, as an LXC guest, or natively under
-systemd. It started as an Unraid container and is no longer limited to it.
+It runs on any Linux host: as a Docker container, as an LXC guest, or natively under systemd.
+It started as an Unraid container and is no longer limited to it.
 
 **Every page needs a login.** There is one password, and the app generates one if you
 don't set it. See [Logging in](#logging-in).
@@ -19,8 +19,9 @@ inventory. Setting `FWUPD_WEBUI_ENABLE_FLASHING=true` enables the firmware write
 without it the flash routes are not registered at all. Flashing has only been tested on
 fwupd's synthetic device so far, not on real hardware.
 
-**It never writes system firmware.** BIOS, UEFI capsule, SPI flash and Secure Boot key updates are
-refused outright, on every deployment target. See [Flashing firmware](#flashing-firmware).
+**It never writes system firmware.** BIOS, UEFI capsule, SPI flash and Secure Boot key
+updates are refused outright, on every deployment target. See
+[Flashing firmware](#flashing-firmware).
 
 ![Device inventory](docs/screenshots/inventory.png)
 
@@ -33,7 +34,8 @@ Flashing anything means naming it first. There is no one-click path, for any dev
 ![Confirmation step requiring the device name](docs/screenshots/confirm.png)
 
 <sub>Screenshots use fwupd's synthetic test device, so the same images render on any
-machine.</sub>
+machine. They were taken before the login was added, so they don't show the logout
+button.</sub>
 
 ## Install
 
@@ -50,19 +52,17 @@ docker run -d --name fwupd-webui \
   ghcr.io/yuzi-co/fwupd-webui:latest
 ```
 
-Or `docker compose up -d` with the bundled [`docker-compose.yml`](docker-compose.yml).
+Or, from a clone of this repository, `docker compose up -d` with the bundled
+[`docker-compose.yml`](docker-compose.yml). It builds the image locally.
 
-The first start generates a password. See [Logging in](#logging-in) to read it or set your own.
-
-Images are `amd64` only. Pin a version rather than tracking `latest` if you would
-rather choose when the firmware tooling under you changes:
-`ghcr.io/yuzi-co/fwupd-webui:v0.1.0`.
+Images are `amd64` only. Pin a version rather than tracking `latest` if you would rather
+choose when the firmware tooling under you changes: `ghcr.io/yuzi-co/fwupd-webui:v0.3.0`.
 
 ### Unraid
 
 The template at [`templates/fwupd-webui.xml`](templates/fwupd-webui.xml) sets up the mounts,
-the port and the flashing toggle. Add it as a template, or point Community Applications
-at this repository.
+the port, the password and the flashing toggle. Add it as a template, or point Community
+Applications at this repository.
 
 Unraid runs Slackware from a USB stick with the OS in RAM and no persistent package
 manager, so a container is the only practical route there.
@@ -75,15 +75,16 @@ Run **on the Proxmox host**:
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/deploy/proxmox-lxc.sh)"
 ```
 
-Creates a privileged Debian LXC, installs into it and starts it. It prompts before
-creating anything, and auto-detects your rootfs storage, template storage and
-architecture rather than assuming `local-lvm`.
+This creates a privileged Debian LXC, installs into it and starts it. It prompts before
+creating anything, and detects your rootfs storage, template storage and architecture
+rather than assuming `local-lvm`. It also adds an AppArmor profile on the host so the
+container can read `efivars`.
 
-The container reports the firmware of the **Proxmox host**, not of itself — an LXC
-shares the host kernel, so `/sys` and `/dev` describe the real machine.
+The container reports the firmware of the **Proxmox host**, not of itself. An LXC shares the
+host kernel, so `/sys` and `/dev` describe the real machine.
 
-Override any of `CTID`, `CT_HOSTNAME`, `STORAGE`, `TEMPLATE_STORAGE`, `DISK_GB`,
-`CORES`, `RAM_MB`, `BRIDGE`, `PORT`, `ENABLE_FLASHING`.
+Override any of `CTID`, `CT_HOSTNAME`, `STORAGE`, `TEMPLATE_STORAGE`, `DISK_GB`, `CORES`,
+`RAM_MB`, `BRIDGE`, `PORT`, `ENABLE_FLASHING`.
 
 ### Debian or Ubuntu, natively
 
@@ -93,115 +94,19 @@ For an existing LXC, a VM or bare metal, with no Docker:
 curl -fsSL https://raw.githubusercontent.com/yuzi-co/fwupd-webui/main/deploy/install.sh | bash
 ```
 
-Installs to `/opt/fwupd-webui`, runs as a systemd service, configured in
-`/etc/fwupd-webui/env`. Re-running it upgrades in place.
+This installs to `/opt/fwupd-webui` and runs as a systemd service, configured in
+`/etc/fwupd-webui/env`. Re-running it upgrades in place. It installs from `main` unless you
+set `FWUPD_WEBUI_REF` to a tag. `FWUPD_WEBUI_PORT` and `FWUPD_WEBUI_ENABLE_FLASHING` set the
+initial configuration.
 
 ```bash
 systemctl status fwupd-webui
 journalctl -u fwupd-webui -f
 ```
 
-Note that a native install uses your distribution's fwupd. Debian 13 ships 2.0.20 where
-the Docker image ships 2.1.x, which is a device-coverage difference rather than a fault.
-
-## Requirements
-
-**Under Docker, `--privileged` is the requirement.** Everything else is secondary.
-Measured on a real host (fwupd 2.1.7, 8 enumerable devices):
-
-| Configuration | Devices found |
-| --- | --- |
-| `--privileged` | **8** |
-| `--cap-add=ALL` + seccomp and AppArmor unconfined + all mounts | 2 |
-| all three mounts, not privileged | 2 |
-| plain container | 2 |
-
-The two that always appear are the CPU and the display, neither of which needs hardware
-access. Nothing short of `--privileged` reaches the disks, and explicit
-`--device-cgroup-rule` sets make it worse, not better — see
-[Why privileged](#why-privileged).
-
-The bind mounts below are what a privileged container already gets, so under Docker they
-are belt-and-braces rather than load-bearing. They are still worth passing: other
-runtimes are not Docker, and the Proxmox LXC does need its `/dev` and `/run/udev` binds
-declared explicitly.
-
-| Path | Why |
-| --- | --- |
-| `/sys` | fwupd reads sysfs attributes |
-| `/dev` | NVMe, SCSI generic and MTD ioctls |
-| `/run/udev` | fwupd's udev database, when the runtime does not provide one |
-
-### Why privileged
-
-Enumerating firmware means talking to hardware: NVMe admin commands, SCSI generic
-ioctls, sysfs attributes. That needs privileges a normal container does not have. The
-Proxmox LXC is privileged with full device access for the same reason — that is the LXC
-equivalent of `--privileged`, and worth treating with the same care as root on the host.
-
-**Narrowing this was attempted and does not work.** Measured against a real host:
-`--cap-add=ALL`, seccomp and AppArmor unconfined, and every bind mount still finds only
-2 of 8 devices. Adding `--device-cgroup-rule` sets drops it to 0, because specifying
-rules replaces Docker's defaults rather than extending them. Whatever `--privileged`
-does that matters here is not reachable through capabilities. This is recorded as a
-measured dead end rather than a pending improvement.
-
-### Flashing firmware
-
-Disabled unless `FWUPD_WEBUI_ENABLE_FLASHING=true`. When it is off the routes do not
-exist — `POST /flash` is a genuine 404, not a handler that refuses.
-
-**This is experimental.** The install step has only run on fwupd's synthetic test device, and
-no real hardware has been flashed with this tool yet. Don't start with a device you can't
-afford to lose.
-
-With it on, five things still stand between a click and a write:
-
-1. **Nothing flashes without typing the device name.** There is no allowlist and no
-   one-click path — the same rule applies to a mouse receiver and to your cache drive.
-   Matching ignores case, extra whitespace and trademark glyphs, and the UI shows a
-   phrase you can actually type; it is a deliberateness check, not a transcription
-   test. Storage devices (`nvme`, `ata`, `scsi`, `emmc`) additionally show a prominent
-   data-loss warning, so the visual signal distinguishes the dangerous case even though
-   the mechanism does not.
-2. Confirmation is enforced server-side. The HTML input is a prompt; the server
-   refusing the POST is the control.
-3. There is no cancel. Killing a flash mid-write can leave partially written
-   firmware, so a job runs to completion or fails on its own.
-4. **System firmware is refused outright.** `uefi_capsule`, `uefi_dbx` and `mtd` are
-   never flashable, whatever else is true of them. `uefi_capsule` stages a payload to the
-   EFI system partition for the firmware to apply on the next boot; `mtd` writes the
-   SPI flash chip directly, which is how a Proxmox host exposed
-   `Internal SPI Controller (BIOS)` as updatable. A failed write either way costs the
-   motherboard. `uefi_dbx` is blocked for a different reason: it appends to the Secure
-   Boot revocation list, the append cannot be undone, and if it revokes the bootloader
-   in use the machine stops booting until someone disables Secure Boot in firmware
-   setup — physical access this tool cannot assume on a headless host. The Docker image additionally disables `uefi_capsule` in its
-   baked fwupd config, but the application enforces this regardless — an LXC or native
-   install uses the host's fwupd configuration, where those plugins are live.
-5. **The firmware file must match signed metadata.** The app downloads the cab over HTTPS
-   and compares it to the SHA-256 in fwupd's signed metadata before `fwupdtool` sees it.
-   A mismatch, or a release with no signed metadata, HTTPS location or SHA-256, stops the
-   flash before anything is written.
-
-The design started with an allowlist of plugins that could flash in one click. It was
-wrong twice — most memorably by making a NAS cache pool, the drive Docker runs from,
-easier to flash than the array disks. Classifying 124 fwupd plugins by risk is a
-judgement that has to be right every time; requiring one confirmation always is a rule
-that cannot be got wrong.
-
-**Storage devices.** The hazard is not which plugin drives a disk, it is that the disk
-holds data something is using. On a NAS the `ata` devices are usually the array and the
-`nvme` is usually the cache pool — which is where Docker itself lives. All storage is
-therefore treated as the dangerous case regardless of plugin. Stop the array or unmount
-the device before flashing it.
-
-**Staged firmware.** Most devices report `needs-reboot`, meaning the firmware is
-written but becomes live only after a reboot. The result screen says which happened,
-by re-reading the device after the flash. This tool never reboots the host.
-
-**Leaving it on.** Nothing expires the flag. Turning it off again is a container
-restart, and that is the only thing keeping the outermost control meaningful.
+A native install uses your distribution's fwupd. Debian 13 ships 2.0.20 where the Docker image
+ships 2.1.x, which is a device-coverage difference rather than a fault. On a host that also
+runs the fwupd daemon, `fwupdtool` stops the daemon while it works.
 
 ## Logging in
 
@@ -216,17 +121,134 @@ pct exec <ctid> -- cat /var/lib/fwupd/.webui-password             # Proxmox LXC
 sudo cat /var/lib/fwupd/.webui-password                           # native install
 ```
 
+To change a generated password, set `FWUPD_WEBUI_PASSWORD` and restart. A configured password
+takes priority over the saved file.
+
 Sessions last 12 hours and are held in memory, so restarting the app logs you out. Five wrong
 passwords from one address lock that address out for a minute.
 
 **The app serves plain HTTP**, so someone who can sniff your network can capture the password.
 If you don't trust the network, put a reverse proxy with TLS in front of it. The proxy must pass
-the original `Host` header: the app refuses a POST whose `Origin` doesn't match it.
+the original `Host` header, because the app refuses a POST whose `Origin` doesn't match it.
+
+See [`SECURITY.md`](SECURITY.md) for what the app does and doesn't protect, and how to report a
+security problem.
+
+## Requirements
+
+**Under Docker, `--privileged` is the requirement.** Everything else is secondary. Measured on a
+real host (fwupd 2.1.7, 8 enumerable devices):
+
+| Configuration | Devices found |
+| --- | --- |
+| `--privileged` | **8** |
+| `--cap-add=ALL` + seccomp and AppArmor unconfined + all mounts | 2 |
+| all three mounts, not privileged | 2 |
+| plain container | 2 |
+
+The two that always appear are the CPU and the display, neither of which needs hardware access.
+Nothing short of `--privileged` reaches the disks, and explicit `--device-cgroup-rule` sets make
+it worse. See [Why privileged](#why-privileged).
+
+A privileged container already gets the bind mounts below, so Docker doesn't strictly need them.
+They are still worth passing: other runtimes are not Docker, and the Proxmox LXC does need its
+`/dev` and `/run/udev` binds declared explicitly.
+
+| Path | Why |
+| --- | --- |
+| `/sys` | fwupd reads sysfs attributes |
+| `/dev` | NVMe, SCSI generic and MTD ioctls |
+| `/run/udev` | fwupd's udev database, when the runtime does not provide one |
+
+### Why privileged
+
+Enumerating firmware means talking to hardware: NVMe admin commands, SCSI generic ioctls, sysfs
+attributes. That needs privileges a normal container does not have. The Proxmox LXC is privileged
+with full device access for the same reason. That is the LXC equivalent of `--privileged`, so
+treat it with the same care as root on the host.
+
+**Narrowing this was attempted and does not work.** Measured against a real host, `--cap-add=ALL`,
+seccomp and AppArmor unconfined, and every bind mount still find only 2 of 8 devices. Adding
+`--device-cgroup-rule` sets drops it to 0, because specifying rules replaces Docker's defaults
+rather than extending them. Whatever `--privileged` does that matters here is not reachable
+through capabilities.
+
+## Updates marked unconfirmed
+
+fwupd can list a release as an upgrade in `get-devices` while `get-updates` leaves it out. The
+UI shows these so an update isn't lost, but marks them **unconfirmed** and offers no flash
+button. This can happen when a freshly started fwupd engine leaves the `supported` flag off a
+device, and this tool cannot tell that apart from a release fwupd rejected. A listed variant may
+also be for a different board.
+
+If `fwupdmgr get-updates` on the host disagrees with the UI, or with fwupd's login banner, this
+is usually why.
+
+The UI also warns when the Secure Boot Platform Key is a vendor test key, such as
+`DO NOT TRUST - AMI Test PK`. Secure Boot may not protect that machine even when it is on.
+
+## Flashing firmware
+
+Disabled unless `FWUPD_WEBUI_ENABLE_FLASHING=true`. When it is off the routes do not exist:
+`POST /flash` is a genuine 404, not a handler that refuses.
+
+**This is experimental.** The install step has only run on fwupd's synthetic test device, and
+no real hardware has been flashed with this tool yet. Don't start with a device you can't
+afford to lose.
+
+With it on, five things still stand between a click and a write:
+
+1. **Nothing flashes without typing the device name.** There is no allowlist and no one-click
+   path. The same rule applies to a mouse receiver and to your cache drive. Matching ignores
+   case, extra whitespace and trademark glyphs, and the UI shows a phrase you can actually type.
+   It checks that you meant it, not that you can transcribe it. Storage devices (`nvme`, `ata`,
+   `scsi`, `emmc`) also show a prominent data-loss warning.
+2. **The server enforces the confirmation.** The HTML input is a prompt. The control is the
+   server refusing the POST.
+3. **There is no cancel.** Killing a flash mid-write can leave partially written firmware, so a
+   job runs to completion or fails on its own.
+4. **System firmware and Secure Boot variables are refused outright.** These plugins are never
+   flashable:
+   - `uefi_capsule` stages a payload to the EFI system partition for the firmware to apply on
+     the next boot. A failed write costs the motherboard.
+   - `mtd` writes the SPI flash chip directly, which is how a Proxmox host exposed
+     `Internal SPI Controller (BIOS)` as updatable. A failed write costs the motherboard.
+   - `uefi_dbx` appends to the Secure Boot revocation list. The append cannot be undone, and if
+     it revokes the bootloader in use, the machine stops booting until someone disables Secure
+     Boot in firmware setup. This tool cannot assume physical access to a headless host.
+   - `uefi_pk`, `uefi_kek` and `uefi_db` change the Secure Boot keys. This tool cannot undo that
+     either, and a bad change can need someone at the machine.
+
+   The Docker image also disables `uefi_capsule` in its baked fwupd config, but the application
+   enforces all of this regardless. An LXC or native install uses the host's fwupd configuration,
+   where those plugins are live.
+5. **The firmware file must match signed metadata.** The app downloads the cab over HTTPS and
+   compares it to the SHA-256 in fwupd's signed metadata before `fwupdtool` sees it. A mismatch,
+   or a release with no signed metadata, HTTPS location or SHA-256, stops the flash before
+   anything is written. Unconfirmed releases are refused as well.
+
+The design started with an allowlist of plugins that could flash in one click. It was wrong
+twice, most memorably by making a NAS cache pool, the drive Docker runs from, easier to flash
+than the array disks. Classifying 124 fwupd plugins by risk is a judgement that has to be right
+every time. Requiring one confirmation always is a rule that cannot be got wrong.
+
+**Storage devices.** The hazard is not which plugin drives a disk, it is that the disk holds data
+something is using. On a NAS the `ata` devices are usually the array and the `nvme` is usually
+the cache pool, which is where Docker itself lives. All storage is therefore treated as the
+dangerous case regardless of plugin. Stop the array or unmount the device before flashing it.
+
+**Staged firmware.** Most devices report `needs-reboot`, meaning the firmware is written but
+becomes live only after a reboot. The result screen says which happened, by re-reading the device
+after the flash. This tool never reboots the host.
+
+**Leaving it on.** Nothing turns the flag off for you. Set it back to `false` and restart when
+you've finished flashing.
 
 ## Monitoring
 
-`GET /api/status` returns everything a check needs in one request, whether or not flashing
-is enabled. Send the password as a Bearer token. Without it the endpoint returns 401.
+`GET /api/status` returns everything a check needs in one request, whether or not flashing is
+enabled. Send the password as a Bearer token. Without it the endpoint returns 401, and repeated
+wrong tokens get 429.
 
 ```bash
 curl -s -H "Authorization: Bearer $PASSWORD" http://host:8099/api/status | jq
@@ -235,6 +257,7 @@ curl -s -H "Authorization: Bearer $PASSWORD" http://host:8099/api/status | jq
 ```json
 {
   "status": "ok",
+  "version": "0.3.0",
   "fwupd_version": "2.1.7",
   "flashing_enabled": false,
   "devices": { "total": 8, "updatable": 5, "with_updates": 1 },
@@ -256,21 +279,20 @@ curl -s -H "Authorization: Bearer $PASSWORD" http://host:8099/api/status | jq
 }
 ```
 
-`status` is `ok`, `degraded` (metadata stale or a refresh failure) or `error` (fwupd
-unreachable, or the last flash failed). The endpoint returns **HTTP 503** when `status`
-is `error`, so a plain uptime probe catches a broken fwupd without anyone configuring a
-JSON path; `ok` and `degraded` both return 200.
+`status` is `ok`, `degraded` (metadata stale or a refresh failure) or `error` (fwupd unreachable,
+or the last flash failed). The endpoint returns **HTTP 503** when fwupd is unreachable, so a probe
+that sends the token catches a broken fwupd without reading any JSON. Otherwise it returns 200,
+including when `status` is `error` because the last flash failed.
 
-`confirmed` is `false` when fwupd lists the release as an upgrade but `get-updates` did not
-return it. Those releases are shown but cannot be flashed from here.
+`confirmed` is `false` for an [unconfirmed release](#updates-marked-unconfirmed).
 
-`updates` is always present and is `[]` when there is nothing pending, so a check can
-read it unconditionally. `flash` is `null` until a flash has run, then reports phase,
-percent and outcome — and unlike the HTML routes it never redirects during a flash.
+`updates` is always present and is `[]` when there is nothing pending, so a check can read it
+unconditionally. `flash` is `null` until a flash has run, then reports phase, percent and outcome.
+Unlike the HTML routes, this endpoint never redirects during a flash.
 
 **Polling.** Enumeration issues real commands to real disks, so responses are cached for
-`FWUPD_WEBUI_API_CACHE_SECONDS` (default 60). Polling faster than that is harmless — it
-serves the cached snapshot rather than re-reading the hardware.
+`FWUPD_WEBUI_API_CACHE_SECONDS` (default 60). Polling faster than that serves the cached snapshot
+rather than re-reading the hardware.
 
 Useful checks:
 
@@ -298,17 +320,25 @@ curl -sf -H "Authorization: Bearer $PASSWORD" http://host:8099/api/status >/dev/
 
 ## Troubleshooting
 
-**Only one or two devices listed.** Almost always a missing `--privileged`. A
-non-privileged container still finds the CPU and the display, so the UI looks like it is
-working while every disk is absent — which is more confusing than an empty list. The UI
-has a diagnostic page showing which mounts are visible.
+**Only one or two devices listed.** This is almost always a missing `--privileged`. A
+non-privileged container still finds the CPU and the display, so the UI looks like it is working
+while every disk is absent. The UI has a diagnostic page showing which mounts are visible.
 
 **No devices in an LXC.** Check the udev bind mount landed:
-`pct exec <ctid> -- ls /run/udev/data | head`. An unprivileged LXC cannot enumerate
-firmware at all — the container must be privileged with device access.
+`pct exec <ctid> -- ls /run/udev/data | head`. An unprivileged LXC cannot enumerate firmware at
+all. The container must be privileged with device access.
 
-**Metadata is stale.** Refresh failures are non-fatal; the device inventory still
-renders. Check that the host can reach `fwupd.org`.
+**Metadata is stale.** Refresh failures are non-fatal, and the device inventory still renders.
+Check that the host can reach `fwupd.org`.
+
+**Lost the password.** See [Logging in](#logging-in) for how to read a generated one. If you set
+`FWUPD_WEBUI_PASSWORD`, read it from the container's settings or `/etc/fwupd-webui/env`.
+
+**A monitor gets 401 after upgrading.** Since v0.3.0, `/api/status` needs the password as a Bearer
+token. See [Monitoring](#monitoring).
+
+**Logging in returns 403 behind a reverse proxy.** The proxy is rewriting the `Host` header. Make it
+pass the original, for example `proxy_set_header Host $http_host;` in nginx.
 
 ## Development
 
@@ -321,31 +351,30 @@ make fixtures     # regenerate test fixtures from real fwupdtool output
 make integration  # run tests against real fwupdtool inside the image
 ```
 
-The README screenshots come from a real browser driving a real container with fwupd's
-synthetic test device, not from mockups. Regenerate them by building with
-`--build-arg WITH_TEST_DEVICES=true`, running `fwupdtool enable-test-devices` inside it,
-and pointing a headless browser at the result. Doing this is worth more than it sounds:
-the first pass found three defects that the test suite could not see, because all three
-were about what ends up on a screen.
+The README screenshots come from a real browser driving a real container with fwupd's synthetic
+test device, not from mockups. To regenerate them, build with
+`--build-arg WITH_TEST_DEVICES=true`, run `fwupdtool enable-test-devices` inside the container, and
+point a headless browser at the result. The first pass found three defects that the test suite
+could not see, because all three were about what ends up on a screen.
 
-`make fixtures` and `make integration` build the image with
-`--build-arg WITH_TEST_DEVICES=true`, which adds the `fwupd-tests` package so
-fwupd's synthetic devices are available. The shipped image never includes it.
+`make fixtures` and `make integration` build the image with `--build-arg WITH_TEST_DEVICES=true`,
+which adds the `fwupd-tests` package so fwupd's synthetic devices are available. The shipped image
+never includes it.
 
 ## Architecture
 
-There is no fwupd daemon in this container. The backend shells out to `fwupdtool`,
-which runs the fwupd engine in-process — so the image needs no DBus broker and no
-init system, and stays a single Python process.
+There is no fwupd daemon in the container. The backend shells out to `fwupdtool`, which runs the
+fwupd engine in-process, so the image needs no DBus broker and no init system and stays a single
+Python process.
 
 ### Why Debian forky, pinned to a snapshot
 
-This section concerns the **Docker image** only. Native and LXC installs use whatever
-fwupd your distribution ships.
+This section concerns the **Docker image** only. Native and LXC installs use whatever fwupd your
+distribution ships.
 
-The base is `debian:forky-slim` pinned to a `snapshot.debian.org` timestamp. Debian
-stable (trixie) carries fwupd 2.0.20 and `trixie-backports` offers nothing newer, so
-a current fwupd means leaving stable. Measured on real builds:
+The base is `debian:forky-slim` pinned to a `snapshot.debian.org` timestamp. Debian stable (trixie)
+carries fwupd 2.0.20 and `trixie-backports` offers nothing newer, so a current fwupd means leaving
+stable. Measured on real builds:
 
 | Base | fwupd | Size | Plugins |
 | --- | --- | --- | --- |
@@ -354,58 +383,50 @@ a current fwupd means leaving stable. Measured on real builds:
 | `alpine:edge` | 2.1.7 | 331 MB | 144 |
 | `alpine:latest` | 2.0.20 | 328 MB | 131 |
 
-Alpine edge reaches the same fwupd in a third less space, but edge has no snapshot
-archive — its packages are replaced in place, so an edge build cannot be pinned at
-all. forky is testing rather than stable, and its package versions do move, but
-pinning an immutable archive timestamp makes that irrelevant: this Dockerfile
-resolves to identical packages on any future rebuild. Reproducibility is worth the
-141 MB here, and glibc keeps every upstream Linux binary artifact usable, all of
-which are glibc-linked.
+Alpine edge reaches the same fwupd in a third less space, but edge has no snapshot archive. Its
+packages are replaced in place, so an edge build cannot be pinned at all. forky is testing rather
+than stable, and its package versions do move, but pinning an archive timestamp means this
+Dockerfile resolves to identical packages on any future rebuild. That reproducibility is worth the
+141 MB, and glibc keeps upstream Linux binary artifacts usable.
 
-Two consequences worth knowing:
+Two consequences:
 
-- **Security updates arrive only when you bump the pin.** That is the cost of a
-  frozen archive, and it matters more than usual because the container runs
-  privileged. Debian's security team also covers testing more thinly than stable.
-- **Bump `DEBIAN_SNAPSHOT` deliberately, then run `make integration`.** That suite
-  exercises real `fwupdtool` and is what catches a version bump that changes fwupd's
-  JSON output.
+- **Security updates arrive only when you bump the pin.** That is the cost of a frozen archive, and
+  it matters more than usual because the container runs privileged. Debian's security team also
+  covers testing more thinly than stable.
+- **Bump `DEBIAN_SNAPSHOT` deliberately, then run `make integration`.** That suite exercises real
+  `fwupdtool` and catches a version bump that changes fwupd's JSON output.
 
 ```bash
 docker build --build-arg DEBIAN_SNAPSHOT=20260810T000000Z -t fwupd-webui:dev .
 ```
 
-Building fwupd from source was considered and rejected: upstream publishes no Linux
-binary (releases carry a Windows MSI and a source tarball), git `main` past 2.1.7 is
-158 commits of internal refactor with one new device driver, and pinning a fwupd
-commit would still leave its twenty-odd runtime dependencies unpinned.
+Building fwupd from source was considered and rejected. Upstream publishes no Linux binary (releases
+carry a Windows MSI and a source tarball), git `main` past 2.1.7 is 158 commits of internal refactor
+with one new device driver, and pinning a fwupd commit would still leave its twenty-odd runtime
+dependencies unpinned.
 
-The `uefi_capsule` plugin is disabled in the baked `/etc/fwupd/fwupd.conf`. That is
-the plugin capable of staging a firmware capsule to the EFI system partition, which
-on Unraid is the bootable USB stick holding the OS and array configuration. Disabling
-it makes read-only a structural property rather than a convention, and an integration
-test asserts the plugin reports itself disabled.
-
-## Security
-
-To report a security problem, see [`SECURITY.md`](SECURITY.md), which also lists what the app
-does and doesn't protect.
+The `uefi_capsule` plugin is disabled in the baked `/etc/fwupd/fwupd.conf`. That plugin can stage a
+firmware capsule to the EFI system partition, which on Unraid is the bootable USB stick holding the
+OS and array configuration. An integration test asserts the plugin reports itself disabled.
 
 ## Deployment scripts
 
-- [`deploy/install.sh`](deploy/install.sh) — native Debian/Ubuntu install with a systemd unit
-- [`deploy/proxmox-lxc.sh`](deploy/proxmox-lxc.sh) — creates a Proxmox LXC and installs into it
-- [`deploy/systemd/fwupd-webui.service`](deploy/systemd/fwupd-webui.service) — the unit itself
-- [`templates/fwupd-webui.xml`](templates/fwupd-webui.xml) — Unraid Community Applications template
-- [`.github/workflows/release.yml`](.github/workflows/release.yml) — GHCR publish, on a version tag or by manual dispatch
+- [`deploy/install.sh`](deploy/install.sh): native Debian/Ubuntu install with a systemd unit
+- [`deploy/proxmox-lxc.sh`](deploy/proxmox-lxc.sh): creates a Proxmox LXC and installs into it
+- [`deploy/systemd/fwupd-webui.service`](deploy/systemd/fwupd-webui.service): the unit itself
+- [`templates/fwupd-webui.xml`](templates/fwupd-webui.xml): Unraid Community Applications template
+- [`.github/workflows/release.yml`](.github/workflows/release.yml): GHCR publish, on a version tag or by manual dispatch
 
 ## Design documents
 
-- [Phase C design — read-only inventory](docs/specs/2026-08-11-fwupd-webui-design.md)
+These are historical. The code and this README win where they disagree.
+
+- [Phase C design: read-only inventory](docs/specs/2026-08-11-fwupd-webui-design.md)
 - [Phase C implementation plan](docs/plans/2026-08-11-fwupd-webui-phase-c.md)
-- [Phase A design — flashing](docs/specs/2026-08-12-fwupd-webui-phase-a-design.md)
-- [Phase A implementation plan](docs/plans/2026-08-12-fwupd-webui-phase-a.md) — historical; records
-  five assumptions that real fwupd and real hardware disproved
+- [Phase A design: flashing](docs/specs/2026-08-12-fwupd-webui-phase-a-design.md)
+- [Phase A implementation plan](docs/plans/2026-08-12-fwupd-webui-phase-a.md): records five
+  assumptions that real fwupd and real hardware disproved
 
 ## License
 
