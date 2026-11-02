@@ -15,6 +15,7 @@
       <span>fwupd {{ inventory.fwupd_version }}</span>
       <span>metadata {{ inventory.metadata | metadata_age }}</span>
       <button hx-post="/refresh" hx-target="#device-table" hx-swap="outerHTML">Refresh</button>
+      <form method="post" action="/logout"><button type="submit">Log out</button></form>
     </div>
   </header>
   <main>

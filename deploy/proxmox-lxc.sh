@@ -164,7 +164,7 @@ LXCCONF
 # Read is all that is granted, and all that is needed. Enumerating the uefi_*
 # devices only reads; writing efivars is the bricking vector. The application
 # refuses system firmware regardless -- policy.BLOCKED_PLUGINS covers
-# uefi_capsule, uefi_dbx and mtd -- so write access would be a capability
+# uefi_capsule, uefi_dbx, mtd and the Secure Boot keys -- so write access would be a capability
 # nothing here can use, with flashing enabled or not.
 AA_BASE=/etc/apparmor.d/abstractions/lxc/container-base
 AA_NEST=/etc/apparmor.d/lxc/lxc-default-with-nesting
@@ -222,6 +222,7 @@ cat <<DONE
 $(log "done")
 
   UI:        http://${IP:-<container-ip>}:$PORT/
+  Password:  pct exec $CTID -- cat /var/lib/fwupd/.webui-password
   Container: $CTID ($CT_HOSTNAME)
   Config:    pct exec $CTID -- editor /etc/fwupd-webui/env
   Logs:      pct exec $CTID -- journalctl -u fwupd-webui -f

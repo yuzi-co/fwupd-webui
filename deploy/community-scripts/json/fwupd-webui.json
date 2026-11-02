@@ -42,6 +42,10 @@
       "type": "info"
     },
     {
+      "text": "Every page needs a login. Read the generated password with: cat /var/lib/fwupd/.webui-password",
+      "type": "info"
+    },
+    {
       "text": "Firmware flashing is disabled by default. Set FWUPD_WEBUI_ENABLE_FLASHING=true in /etc/fwupd-webui/env and restart the service. Even then, every flash requires typing the device name, and BIOS, UEFI capsule and SPI flash writes are refused outright.",
       "type": "info"
     }

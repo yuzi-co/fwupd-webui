@@ -77,6 +77,10 @@ FWUPD_WEBUI_PORT=$PORT
 # registered at all and the UI is a read-only inventory.
 FWUPD_WEBUI_ENABLE_FLASHING=$ENABLE_FLASHING
 
+# Login password. Unset means one was generated at first start and saved in
+# /var/lib/fwupd/.webui-password.
+# FWUPD_WEBUI_PASSWORD=
+
 # FWUPD_WEBUI_LVFS_REMOTE=lvfs
 # FWUPD_WEBUI_REFRESH_INTERVAL_HOURS=24
 # FWUPD_WEBUI_LOG_LEVEL=info
@@ -90,6 +94,8 @@ sleep 2
 if systemctl is-active --quiet fwupd-webui; then
     IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
     log "running at http://${IP:-localhost}:$PORT/"
+    printf 'Log in with the password in /var/lib/fwupd/.webui-password, or set your own\n'
+    printf 'with FWUPD_WEBUI_PASSWORD in /etc/fwupd-webui/env.\n'
     [ "$ENABLE_FLASHING" = "true" ] \
         && printf '\033[1;33mFlashing is ENABLED.\033[0m Every flash still requires typing the device name.\n' \
         || printf 'Flashing is disabled. Set FWUPD_WEBUI_ENABLE_FLASHING=true in\n/etc/fwupd-webui/env and restart to enable it.\n'

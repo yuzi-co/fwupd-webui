@@ -10,6 +10,7 @@ from fwupd_webui.config import Config
 from fwupd_webui.fwupd.cli import FwupdCli
 from fwupd_webui.fwupd.service import FwupdService
 from fwupd_webui.web.app import create_app
+from fwupd_webui.web.auth import load_password
 
 STATE_DIR = Path("/var/lib/fwupd")
 
@@ -23,6 +24,7 @@ def main() -> None:
         install_timeout=config.install_timeout_seconds,
     )
     service = FwupdService(cli, config, STATE_DIR)
+    password = load_password(config.password, STATE_DIR)
 
     if config.enable_flashing:
         logging.getLogger(__name__).warning(
@@ -36,7 +38,7 @@ def main() -> None:
     except Exception:
         logging.getLogger(__name__).warning("startup metadata refresh failed", exc_info=True)
 
-    app = create_app(service, config)
+    app = create_app(service, config, password=password)
     uvicorn.run(app, host="0.0.0.0", port=config.port, log_level=config.log_level)
 
 

@@ -43,3 +43,10 @@ td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-al
   padding: 0.6rem;
   margin: 0.5rem 0;
 }
+.meta form { margin: 0; }
+.login { max-width: 22rem; margin: 15vh auto 0; }
+.login h1 { font-size: 1.05rem; font-weight: 600; margin: 0 0 1rem; }
+.login label { display: block; margin-bottom: 0.25rem; }
+.login input { display: block; width: 100%; box-sizing: border-box; padding: 0.4rem;
+               margin-bottom: 0.75rem; }
+.login .muted { font-size: 0.8rem; margin-top: 1.5rem; }

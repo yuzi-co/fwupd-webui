@@ -1,10 +1,9 @@
 import pytest
-from fastapi.testclient import TestClient
 
 from fwupd_webui.config import Config
 from fwupd_webui.fwupd.cli import FwupdNotFound
 from fwupd_webui.fwupd.service import Inventory, MetadataStatus
-from fwupd_webui.web.app import create_app
+from helpers import TestClient, create_app
 
 
 class StubService:
